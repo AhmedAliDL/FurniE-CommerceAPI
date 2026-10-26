@@ -6,7 +6,6 @@
 | --- | --- |
 | Live API | <https://furniapi.runasp.net> |
 | Swagger UI | <https://furniapi.runasp.net/swagger> |
-| Contributor guide | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Test suite | 706 NUnit tests, all passing |
 | Deployed endpoints | 97 routes, all verified against the live API |
 
