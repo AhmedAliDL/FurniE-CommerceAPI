@@ -1,0 +1,111 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Furni_E_Commerce_Service</RootNamespace>
+    <UserSecretsId>aa428d1a-fcb6-4513-bc6b-2056d9adaab9</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="wwwroot\css\bootstrap.min.css" />
+    <Content Remove="wwwroot\css\style.css" />
+    <Content Remove="wwwroot\css\tiny-slider.css" />
+    <Content Remove="wwwroot\images\bag.svg" />
+    <Content Remove="wwwroot\images\bowl-2.png" />
+    <Content Remove="wwwroot\images\bowl-3.png" />
+    <Content Remove="wwwroot\images\cart.svg" />
+    <Content Remove="wwwroot\images\couch.png" />
+    <Content Remove="wwwroot\images\cross.svg" />
+    <Content Remove="wwwroot\images\dots-green.svg" />
+    <Content Remove="wwwroot\images\dots-light.svg" />
+    <Content Remove="wwwroot\images\dots-yellow.svg" />
+    <Content Remove="wwwroot\images\envelope-outline.svg" />
+    <Content Remove="wwwroot\images\img-grid-1.jpg" />
+    <Content Remove="wwwroot\images\img-grid-2.jpg" />
+    <Content Remove="wwwroot\images\img-grid-3.jpg" />
+    <Content Remove="wwwroot\images\person-1.jpg" />
+    <Content Remove="wwwroot\images\person-1.png" />
+    <Content Remove="wwwroot\images\person_1.jpg" />
+    <Content Remove="wwwroot\images\person_2.jpg" />
+    <Content Remove="wwwroot\images\person_3.jpg" />
+    <Content Remove="wwwroot\images\person_4.jpg" />
+    <Content Remove="wwwroot\images\post-1.jpg" />
+    <Content Remove="wwwroot\images\post-2.jpg" />
+    <Content Remove="wwwroot\images\post-3.jpg" />
+    <Content Remove="wwwroot\images\product-1.png" />
+    <Content Remove="wwwroot\images\product-2.png" />
+    <Content Remove="wwwroot\images\product-3.png" />
+    <Content Remove="wwwroot\images\return.svg" />
+    <Content Remove="wwwroot\images\sofa.png" />
+    <Content Remove="wwwroot\images\support.svg" />
+    <Content Remove="wwwroot\images\truck.svg" />
+    <Content Remove="wwwroot\images\user.svg" />
+    <Content Remove="wwwroot\images\why-choose-us-img.jpg" />
+    <Content Remove="wwwroot\js\bootstrap.bundle.min.js" />
+    <Content Remove="wwwroot\js\custom.js" />
+    <Content Remove="wwwroot\js\tiny-slider.js" />
+    <Content Remove="wwwroot\scss\style.scss" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="wwwroot\css\bootstrap.min.css" />
+    <None Include="wwwroot\css\style.css" />
+    <None Include="wwwroot\css\tiny-slider.css" />
+    <None Include="wwwroot\favicon.png" />
+    <None Include="wwwroot\images\bag.svg" />
+    <None Include="wwwroot\images\bowl-2.png" />
+    <None Include="wwwroot\images\bowl-3.png" />
+    <None Include="wwwroot\images\cart.svg" />
+    <None Include="wwwroot\images\couch.png" />
+    <None Include="wwwroot\images\cross.svg" />
+    <None Include="wwwroot\images\dots-green.svg" />
+    <None Include="wwwroot\images\dots-light.svg" />
+    <None Include="wwwroot\images\dots-yellow.svg" />
+    <None Include="wwwroot\images\envelope-outline.svg" />
+    <None Include="wwwroot\images\img-grid-1.jpg" />
+    <None Include="wwwroot\images\img-grid-2.jpg" />
+    <None Include="wwwroot\images\img-grid-3.jpg" />
+    <None Include="wwwroot\images\person-1.jpg" />
+    <None Include="wwwroot\images\person-1.png" />
+    <None Include="wwwroot\images\person_1.jpg" />
+    <None Include="wwwroot\images\person_2.jpg" />
+    <None Include="wwwroot\images\person_3.jpg" />
+    <None Include="wwwroot\images\person_4.jpg" />
+    <None Include="wwwroot\images\post-1.jpg" />
+    <None Include="wwwroot\images\post-2.jpg" />
+    <None Include="wwwroot\images\post-3.jpg" />
+    <None Include="wwwroot\images\product-1.png" />
+    <None Include="wwwroot\images\product-2.png" />
+    <None Include="wwwroot\images\product-3.png" />
+    <None Include="wwwroot\images\return.svg" />
+    <None Include="wwwroot\images\sofa.png" />
+    <None Include="wwwroot\images\support.svg" />
+    <None Include="wwwroot\images\truck.svg" />
+    <None Include="wwwroot\images\user.svg" />
+    <None Include="wwwroot\images\why-choose-us-img.jpg" />
+    <None Include="wwwroot\js\bootstrap.bundle.min.js" />
+    <None Include="wwwroot\js\custom.js" />
+    <None Include="wwwroot\js\tiny-slider.js" />
+    <None Include="wwwroot\README.txt" />
+    <None Include="wwwroot\scss\style.scss" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.14.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+	  <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+	  <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.5" />
+    <PackageReference Include="Scrutor" Version="4.2.2" />
+    <PackageReference Include="Twilio" Version="7.14.2" />
+  </ItemGroup>
+
+</Project>

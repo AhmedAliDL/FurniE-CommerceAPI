@@ -1,0 +1,645 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>App.Api</name>
+    </assembly>
+    <members>
+        <member name="M:App.Api.Controllers.AuthController.Profile(System.Threading.CancellationToken)">
+            <summary>
+            Gets the profile of the currently authenticated user.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The profile of the current user, or no content when it is not found.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.AuthController.Register(App.Application.Auth.Command.Register.RegisterCommand,System.Threading.CancellationToken)">
+            <summary>
+            Registers a new user account.
+            </summary>
+            <param name="req">The registration details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The unique identifier of the created user, or an error message when registration fails.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.AuthController.Login(App.Application.Auth.Command.Login.LoginCommand,System.Threading.CancellationToken)">
+            <summary>
+            Authenticates a user and returns access and refresh tokens.
+            </summary>
+            <param name="req">The login credentials.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The authentication tokens, or an error message when the credentials are invalid.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.AuthController.EditUser(App.Application.Auth.Command.EditProfile.EditProfileCommand,System.Threading.CancellationToken)">
+            <summary>
+            Updates the profile of the currently authenticated user.
+            </summary>
+            <param name="req">The updated profile details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>A confirmation message, or an error message when the update fails.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.AuthController.SendEmailConfirmaton(App.Application.Auth.Command.SendEmailConfirmation.SendEmailConfirmationCommand,System.Threading.CancellationToken)">
+            <summary>
+            Sends an email confirmation token to the user's email address.
+            </summary>
+            <param name="req">The email confirmation request.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>A confirmation message, or the failure details.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.AuthController.ConfirmEmail(App.Application.Auth.Command.ConfirmEmail.ConfirmEmailCommand,System.Threading.CancellationToken)">
+            <summary>
+            Confirms a user's email address with the confirmation token.
+            </summary>
+            <param name="req">The email confirmation details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>A confirmation message, or the failure details.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.AuthController.ChangePassword(App.Application.Auth.Command.ChangePassword.ChangePasswordCommand,System.Threading.CancellationToken)">
+            <summary>
+            Changes the password of the currently authenticated user.
+            </summary>
+            <param name="req">The current and new password.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>A confirmation message, or the failure result.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.AuthController.ForgetPassword(App.Application.Auth.Command.ForgetPassword.ForgetPasswordCommand,System.Threading.CancellationToken)">
+            <summary>
+            Sends a password reset token to the user's email address.
+            </summary>
+            <param name="req">The forgot-password request containing the user's email.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>A confirmation message, or the failure details.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.AuthController.ResetPassword(App.Application.Auth.Command.ResetPassword.ResetPasswordCommand,System.Threading.CancellationToken)">
+            <summary>
+            Resets the user's password using the reset token.
+            </summary>
+            <param name="req">The reset-password details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>A confirmation message, or the failure result.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.AuthController.RefreshToken(System.Threading.CancellationToken)">
+            <summary>
+            Refreshes the access token using the refresh token cookie.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The refreshed tokens, or the failure result.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.AuthController.Logout(System.Threading.CancellationToken)">
+            <summary>
+            Logs out the current user and revokes their refresh token.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when logged out, or the failure result.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.CategoryController.GetAll(System.Threading.CancellationToken)">
+            <summary>
+            Gets the names of all categories.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of category names.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.CategoryController.Create(App.Application.Categories.Command.CreateCategory.CreateCategoryCommand,System.Threading.CancellationToken)">
+            <summary>
+            Creates a new category.
+            </summary>
+            <param name="command">The category name.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The unique identifier of the created category.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.CheckoutController.Index(App.Application.ShoppingCarts.Command.UpdateCartQuantities.UpdateCartQuantitiesCommand,System.Threading.CancellationToken)">
+            <summary>
+            Updates the cart quantities and gets the checkout details for the current user.
+            </summary>
+            <param name="command">The cart items with their new quantities.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The checkout details.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.CheckoutController.PlaceOrder(App.Application.Checkout.Command.PlaceOrder.PlaceOrderCommand,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Places an order for the current user's shopping cart.
+            </summary>
+            <param name="command">The order placement details.</param>
+            <param name="idempotencyKey">Optional key that makes retries safe: repeating the request with the same key returns the original order instead of creating a duplicate.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The unique identifier of the created order.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ContactController.GetContactDetails(System.Threading.CancellationToken)">
+            <summary>
+            Gets the current user's contact details.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The contact details.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ContactController.SendEmail(App.Application.Contact.Command.SendContactEmail.SendContactEmailCommand,System.Threading.CancellationToken)">
+            <summary>
+            Sends a contact email from the current user to the site admin.
+            </summary>
+            <param name="command">The email subject and body.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The result of the email sending operation.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.CouponController.Index(System.Threading.CancellationToken)">
+            <summary>
+            Gets all coupons.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of all coupons.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.CouponController.CheckCoupon(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Checks if a coupon code is valid.
+            </summary>
+            <param name="couponCode">The coupon code.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The discount percentage when the coupon is valid.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.CouponController.GetForEdit(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Gets a coupon for editing.
+            </summary>
+            <param name="couponId">The coupon identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The coupon details.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.CouponController.AddCoupon(App.Application.Coupons.Command.CreateCoupon.CreateCouponCommand,System.Threading.CancellationToken)">
+            <summary>
+            Creates a new coupon.
+            </summary>
+            <param name="command">The coupon details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The unique identifier of the created coupon.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.CouponController.EditCoupon(System.Guid,App.Application.Coupons.Command.UpdateCoupon.UpdateCouponCommand,System.Threading.CancellationToken)">
+            <summary>
+            Updates an existing coupon.
+            </summary>
+            <param name="couponId">The coupon identifier.</param>
+            <param name="command">The coupon details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the coupon is updated, or not found when it does not exist.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.CouponController.DeleteCoupon(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Deletes a coupon.
+            </summary>
+            <param name="couponId">The coupon identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the coupon is deleted, or not found when it does not exist.</returns>
+        </member>
+        <member name="T:App.Api.Controllers.NotificationController">
+            <summary>
+            Handles admin notifications.
+            </summary>
+        </member>
+        <member name="M:App.Api.Controllers.NotificationController.#ctor(MediatR.ISender)">
+            <summary>
+            Handles admin notifications.
+            </summary>
+        </member>
+        <member name="M:App.Api.Controllers.NotificationController.GetAdminNotifications(System.Threading.CancellationToken)">
+            <summary>
+            Gets the notifications of the currently authenticated admin.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of notifications, or no content when no notifications exist.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.NotificationController.MakeNotificationRead(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Marks a notification as read.
+            </summary>
+            <param name="id">The notification identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>An empty response on success, or an error message when the update fails.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.GetOrders(System.Threading.CancellationToken)">
+            <summary>
+            Gets the current user's order list.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of user orders.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.OrderDetails(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Gets the details of a specific order.
+            </summary>
+            <param name="orderId">The order identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The order details.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.UpdateOrderStatus(System.Guid,App.Application.Orders.Command.UpdateOrderStatus.UpdateOrderStatusCommand,System.Threading.CancellationToken)">
+            <summary>
+            Updates the status of an order following the allowed state transitions. Admin only.
+            </summary>
+            <param name="orderId">The order identifier.</param>
+            <param name="command">The new order status.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the status is updated.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.CancelOrder(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Cancels the current user's order. Only allowed while the order is pending, confirmed or processing.
+            </summary>
+            <param name="orderId">The order identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the order is cancelled.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.RequestOrderCancellation(System.Guid,App.Application.Orders.Command.RequestOrderCancellation.RequestOrderCancellationCommand,System.Threading.CancellationToken)">
+            <summary>
+            Requests cancellation of a paid order before it ships. The order moves to CancellationRequested and the admin is notified.
+            </summary>
+            <param name="orderId">The order identifier.</param>
+            <param name="command">The cancellation reason.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The id of the created cancellation request.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.RequestOrderReturn(System.Guid,App.Application.Orders.Command.RequestOrderReturn.RequestOrderReturnCommand,System.Threading.CancellationToken)">
+            <summary>
+            Requests a return for a delivered order (within 14 days of delivery).
+            </summary>
+            <param name="orderId">The order identifier.</param>
+            <param name="command">The return reason category, free-text reason and the items to return.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The id of the created return request.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.GetCancellationRequests(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Lists cancellation requests, optionally filtered by status. Admin only.
+            </summary>
+            <param name="status">Optional status filter (Pending, Approved, Rejected).</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of cancellation requests.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.ApproveCancellationRequest(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Approves a cancellation request: voids the Paymob payment, cancels the order and restores stock. Admin only.
+            </summary>
+            <param name="requestId">The cancellation request identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when approved.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.RejectCancellationRequest(System.Guid,App.Application.Orders.Command.RejectCancellationRequest.RejectCancellationRequestCommand,System.Threading.CancellationToken)">
+            <summary>
+            Rejects a cancellation request and reverts the order to its previous status. Admin only.
+            </summary>
+            <param name="requestId">The cancellation request identifier.</param>
+            <param name="command">The rejection note.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when rejected.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.GetReturnRequests(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Lists return requests, optionally filtered by status. Admin only.
+            </summary>
+            <param name="status">Optional status filter (Pending, Accepted, Received, Completed, Rejected).</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of return requests with their items.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.AcceptReturnRequest(System.Guid,App.Application.Orders.Command.AcceptReturnRequest.AcceptReturnRequestCommand,System.Threading.CancellationToken)">
+            <summary>
+            Accepts a return request and assigns a courier for pickup. Admin only.
+            </summary>
+            <param name="requestId">The return request identifier.</param>
+            <param name="command">The courier name and phone.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when accepted.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.ReceiveReturnRequest(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Marks returned items as received at the warehouse for inspection. Admin only.
+            </summary>
+            <param name="requestId">The return request identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when received.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.RejectReturnRequest(System.Guid,App.Application.Orders.Command.RejectReturnRequest.RejectReturnRequestCommand,System.Threading.CancellationToken)">
+            <summary>
+            Rejects a return request. Admin only.
+            </summary>
+            <param name="requestId">The return request identifier.</param>
+            <param name="command">The rejection note.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when rejected.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.ProcessReturnRefund(System.Guid,App.Application.Orders.Command.ProcessReturnRefund.ProcessReturnRefundCommand,System.Threading.CancellationToken)">
+            <summary>
+            Processes the refund for an inspected return via the Paymob Refund API. Admin only.
+            </summary>
+            <param name="requestId">The return request identifier.</param>
+            <param name="command">Optional partial amount in cents; omit to refund the full refundable amount (returned items, plus shipping for merchant-defect returns).</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the refund is processed.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.DeleteFullOrder(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Deletes a full order and restores the products' stock.
+            </summary>
+            <param name="orderId">The order identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the order is deleted.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.OrdersController.DeleteSpecificItemFromOrder(System.Guid,System.Guid,System.Int32,System.Threading.CancellationToken)">
+            <summary>
+            Deletes a specific item from an order and restores the product's stock.
+            </summary>
+            <param name="orderId">The order identifier.</param>
+            <param name="productId">The product identifier.</param>
+            <param name="quantity">The quantity to remove.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the item is deleted.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.PaymentController.CreateSession(App.Application.Payments.Command.CreatePaymentSession.CreatePaymentSessionCommand,System.Threading.CancellationToken)">
+            <summary>
+            Creates a Paymob payment session for one of the current user's orders.
+            </summary>
+            <param name="command">The order to pay for, plus an optional idempotency key: repeating the same key for the same order within the intention's lifetime replays the existing session instead of creating a new Paymob intention.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The client secret, checkout URL and available payment methods.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.PaymentController.Callback(App.Application.Payments.Dto.Paymob.PaymobCallbackDto,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Receives Paymob transaction callbacks. The HMAC signature arrives as a query string.
+            </summary>
+            <param name="body">The transaction callback payload.</param>
+            <param name="hmac">The HMAC signature computed by Paymob.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+        </member>
+        <member name="M:App.Api.Controllers.PaymentController.GetTransactions(App.Application.Payments.Queries.GetPaymentTransactions.GetPaymentTransactionsQuery,System.Threading.CancellationToken)">
+            <summary>
+            Gets the recorded Paymob transactions (admin only).
+            </summary>
+            <param name="query">Optional order filter and paging.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>A page of payment transactions.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.PaymentController.Refund(App.Application.Payments.Command.RefundPayment.RefundPaymentCommand,System.Threading.CancellationToken)">
+            <summary>
+            Refunds (fully or partially) the payment of a delivered order. Refunds are only
+            allowed within 14 days after delivery.
+            </summary>
+            <param name="command">The order to refund. Omit AmountCents to refund everything still refundable.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The updated transaction status and refunded amount.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.PaymentController.Void(App.Application.Payments.Command.VoidPayment.VoidPaymentCommand,System.Threading.CancellationToken)">
+            <summary>
+            Voids the payment of an order. Voids are only allowed within 24 hours of payment.
+            </summary>
+            <param name="command">The order whose payment should be voided.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The updated transaction status.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ProductController.GetAll(System.Threading.CancellationToken)">
+            <summary>
+            Gets all products.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of all products.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ProductController.Search(App.Application.Products.Queries.SearchProducts.SearchProductsQuery,System.Threading.CancellationToken)">
+            <summary>
+            Searches products with optional filtering, sorting and pagination.
+            </summary>
+            <param name="query">The search criteria.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>A page of matching products.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ProductController.GetActive(System.Threading.CancellationToken)">
+            <summary>
+            Gets the active products with the category list for browsing.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The active products and all categories.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ProductController.GetByCategory(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Gets the active products in a category.
+            </summary>
+            <param name="categoryName">The category name.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The active products in the category and all categories.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ProductController.GetDetails(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Gets a product's details with its reviews.
+            </summary>
+            <param name="productId">The product identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The product details with reviews.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ProductController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Gets a product by its unique identifier.
+            </summary>
+            <param name="productId">The product identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The product details.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ProductController.GetRecentlyViewed(System.Threading.CancellationToken)">
+            <summary>
+            Gets the products recently viewed by the current customer.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The recently viewed products, most recent first.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ProductController.Create(App.Application.Products.Command.CreateProduct.CreateProductCommand,System.Threading.CancellationToken)">
+            <summary>
+            Creates a new product.
+            </summary>
+            <param name="command">The product details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The unique identifier of the created product.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ProductController.Update(System.Guid,App.Application.Products.Command.UpdateProduct.UpdateProductCommand,System.Threading.CancellationToken)">
+            <summary>
+            Updates an existing product.
+            </summary>
+            <param name="productId">The product identifier.</param>
+            <param name="command">The product details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the product is updated, or not found when it does not exist.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ReviewController.GetProductReviews(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Gets all reviews for a specific product.
+            </summary>
+            <param name="productId">The product identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of product reviews.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ReviewController.AddReview(App.Application.Reviews.Command.AddReview.AddReviewCommand,System.Threading.CancellationToken)">
+            <summary>
+            Adds a review for a specific product.
+            </summary>
+            <param name="command">The review details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The unique identifier of the created review.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.RoleController.GetRoles(System.Threading.CancellationToken)">
+            <summary>
+            Gets all roles.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of roles.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.RoleController.CreateRole(App.Application.Roles.Command.CreateRole.CreateRoleCommand,System.Threading.CancellationToken)">
+            <summary>
+            Creates a new role.
+            </summary>
+            <param name="command">The role details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>Created status when the role is created.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.RoleController.AssignRole(App.Application.Roles.Command.AssignRoleToUser.AssignRoleToUserCommand,System.Threading.CancellationToken)">
+            <summary>
+            Assigns a role to a user.
+            </summary>
+            <param name="command">The role name and user email.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the role is assigned.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ShoppingCartController.Index(System.Threading.CancellationToken)">
+            <summary>
+            Gets the current user's shopping cart items.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The shopping cart with its items.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ShoppingCartController.AddItem(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Adds a product to the current user's shopping cart.
+            </summary>
+            <param name="productId">The product identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>A message when the item is added, or the errors otherwise.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ShoppingCartController.UpdateQuantity(App.Application.ShoppingCarts.Command.UpdateCartQuantities.UpdateCartQuantitiesCommand,System.Threading.CancellationToken)">
+            <summary>
+            Updates the quantity of products in the shopping cart.
+            </summary>
+            <param name="command">The cart items with their new quantities.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the quantities are updated.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.ShoppingCartController.DeleteProduct(System.Guid,System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Deletes a product from the shopping cart.
+            </summary>
+            <param name="productId">The product identifier.</param>
+            <param name="shoppingCartId">The shopping cart identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the item is deleted.</returns>
+        </member>
+        <member name="T:App.Api.Controllers.SupportChatController">
+            <summary>
+            Handles the chat conversation attached to a support ticket. Sending messages is done through the SupportHub SignalR connection only.
+            </summary>
+        </member>
+        <member name="M:App.Api.Controllers.SupportChatController.#ctor(MediatR.ISender)">
+            <summary>
+            Handles the chat conversation attached to a support ticket. Sending messages is done through the SupportHub SignalR connection only.
+            </summary>
+        </member>
+        <member name="M:App.Api.Controllers.SupportChatController.GetConversation(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Gets the conversation attached to the ticket.
+            </summary>
+            <param name="ticketId">The ticket identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The conversation, or not found when no message has been sent yet.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.SupportChatController.GetMessages(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Gets the full message history of the conversation, oldest first.
+            </summary>
+            <param name="ticketId">The ticket identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The messages of the conversation.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.SupportChatController.MarkRead(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Marks all messages sent by the other party as read.
+            </summary>
+            <param name="ticketId">The ticket identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The number of marked messages.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.SupportChatController.Close(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Closes the conversation. Admin only.
+            </summary>
+            <param name="ticketId">The ticket identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the conversation is closed.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.SupportChatController.Reopen(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Reopens a closed conversation.
+            </summary>
+            <param name="ticketId">The ticket identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the conversation is reopened.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.SupportTicketsController.GetMyTickets(System.Threading.CancellationToken)">
+            <summary>
+            Gets the authenticated customer's support tickets.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of the customer's support tickets.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.SupportTicketsController.GetAll(System.Nullable{App.Domain.Enums.SupportTicketStatus},System.Threading.CancellationToken)">
+            <summary>
+            Gets all support tickets with their conversation state. Admin only.
+            </summary>
+            <param name="status">Optional ticket status filter.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of support tickets for the agents' inbox.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.SupportTicketsController.GetById(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Gets a support ticket by its unique identifier. Only the owner or an admin can view it.
+            </summary>
+            <param name="ticketId">The ticket identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The support ticket.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.SupportTicketsController.Create(App.Application.SupportTickets.Command.CreateSupportTicket.CreateSupportTicketCommand,System.Threading.CancellationToken)">
+            <summary>
+            Creates a new support ticket for the authenticated customer.
+            </summary>
+            <param name="command">The ticket details.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The unique identifier of the created ticket.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.SupportTicketsController.UpdateStatus(System.Guid,App.Application.SupportTickets.Command.UpdateTicketStatus.UpdateTicketStatusCommand,System.Threading.CancellationToken)">
+            <summary>
+            Updates the status of a support ticket. Admin only.
+            </summary>
+            <param name="ticketId">The ticket identifier.</param>
+            <param name="command">The new status.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the status is updated.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.WishlistController.GetWishlist(System.Threading.CancellationToken)">
+            <summary>
+            Gets the current user's wishlist.
+            </summary>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>The list of wishlist items.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.WishlistController.AddToWishlist(System.Guid,System.Decimal,System.Threading.CancellationToken)">
+            <summary>
+            Adds a product to the current user's wishlist.
+            </summary>
+            <param name="productId">The product identifier.</param>
+            <param name="productPrice">The product price.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the product is added or already present.</returns>
+        </member>
+        <member name="M:App.Api.Controllers.WishlistController.RemoveFromWishlist(System.Guid,System.Threading.CancellationToken)">
+            <summary>
+            Removes a product from the current user's wishlist.
+            </summary>
+            <param name="productId">The product identifier.</param>
+            <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+            <returns>No content when the product is removed.</returns>
+        </member>
+    </members>
+</doc>

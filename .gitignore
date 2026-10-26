@@ -1,0 +1,69 @@
+CONTRIBUTING.md
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.env
+CONTRIBUTING.md
+
+# Build output
+bin/
+obj/
+artifacts/
+.buildtmp/
+
+# .NET generated files
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+
+# Test results
+TestResults/
+*.trx
+
+# Rider / JetBrains
+.idea/
+*.DotSettings.user
+
+# ASP.NET / local development
+appsettings.Development.json
+appsettings.Local.json
+activeblogapi.runasp.net-WebDeploy.publishSettings
+
+# User Secrets
+secrets.json
+
+# Publish profiles
+*.pubxml
+*.publishsettings
+*.publishSettings
+
+# Local tooling
+.config/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+
+# Coverage
+coverage/
+*.coverage
+*.coveragexml
