@@ -802,18 +802,3 @@ Checklist for a deployment:
 - **Swagger is always enabled**, including production. Disable it in `Program.cs` if the API is public and you do not want the schema exposed.
 - **Demo data is seeded on startup.** Disable or adjust `DbSeeder` before production use.
 
----
-
-## 14. Contributing
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) for the full conventions, layer rules, and contribution checklist. In short:
-
-- Business logic belongs in an Application handler — never in a controller or entity.
-- Every command/query gets a FluentValidation validator.
-- Every unbounded list is paginated with `FindPagedAsync` + `PagedResult<T>`.
-- Customer-scoped resources enforce ownership in the handler.
-- New entities implement `ISoftDeletable` unless explicitly exempt.
-- Use `IEmailTemplateBuilder` for email, never hand-built HTML.
-- Schema changes ship with a raw SQL script.
-- Add controller, handler, and validator tests; the full suite must stay green.
-- Never commit or log secrets, tokens, passwords, or connection strings.
