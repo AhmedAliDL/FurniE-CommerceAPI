@@ -7,6 +7,7 @@ namespace App.Domain.Entities
         public Guid OrderItemId { get; set; }
         public Guid OrderId { get; set; }
         public Guid ProductId { get; set; }
+        public string ProductNameSnapshot { get; set; } = string.Empty;
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;

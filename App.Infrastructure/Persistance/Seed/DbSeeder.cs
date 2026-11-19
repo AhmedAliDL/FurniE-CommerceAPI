@@ -454,6 +454,10 @@ namespace App.Infrastructure.Persistance.Seed
                 Customer = customer,
                 OrderStatus = status,
                 ShippingAddress = customer.Address,
+                RecipientName = $"{customer.FName} {customer.LName}".Trim(),
+                RecipientPhone = customer.PhoneNumber ?? string.Empty,
+                ShippingCity = customer.City,
+                ShippingCountry = customer.Country,
                 ShippingFee = shippingFee,
                 CouponDiscount = couponRate,
                 UpdatedAt = updatedAt ?? deliveredAt ?? createdAt,
@@ -471,6 +475,7 @@ namespace App.Infrastructure.Persistance.Seed
                 orderItems.Add(new OrderItem
                 {
                     Product = product,
+                    ProductNameSnapshot = product.ProductName,
                     Quantity = quantity,
                     UnitPrice = unitPrice
                 });

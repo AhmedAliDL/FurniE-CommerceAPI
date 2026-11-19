@@ -59,13 +59,17 @@ namespace App.Application.Orders.Command.RequestOrderReturn
                 if (!orderItems.TryGetValue(item.OrderItemId, out var orderItem))
                     return ResponseResult<Guid>.Failure($"Order item {item.OrderItemId} does not belong to this order.");
 
+                string productName = string.IsNullOrWhiteSpace(orderItem.ProductNameSnapshot)
+                    ? orderItem.Product.ProductName
+                    : orderItem.ProductNameSnapshot;
+
                 if (item.Quantity > orderItem.Quantity)
-                    return ResponseResult<Guid>.Failure($"Cannot return {item.Quantity} units of {orderItem.Product.ProductName}; only {orderItem.Quantity} were ordered.");
+                    return ResponseResult<Guid>.Failure($"Cannot return {item.Quantity} units of {productName}; only {orderItem.Quantity} were ordered.");
 
                 returnItems.Add(new ReturnItem
                 {
                     OrderItemId = orderItem.OrderItemId,
-                    ProductName = orderItem.Product.ProductName,
+                    ProductName = productName,
                     Quantity = item.Quantity
                 });
             }

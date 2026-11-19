@@ -15,6 +15,10 @@ namespace App.Infrastructure.Persistance.Config
             builder.Property(o => o.CouponDiscount).HasColumnType("decimal(18,2)");
             builder.Property(o => o.OrderStatus).HasConversion<string>().HasColumnType("nvarchar(30)");
             builder.Property(o => o.ShippingAddress).HasColumnType("nvarchar(450)");
+            builder.Property(o => o.RecipientName).HasColumnType("nvarchar(200)");
+            builder.Property(o => o.RecipientPhone).HasColumnType("nvarchar(32)");
+            builder.Property(o => o.ShippingCity).HasColumnType("nvarchar(80)");
+            builder.Property(o => o.ShippingCountry).HasColumnType("nvarchar(80)");
 
 
             builder.HasOne(o => o.Customer)

@@ -52,6 +52,10 @@ namespace App.Application.Orders.Queries.GetUserOrders
                 {
                     OrderId = order.OrderId,
                     Address = order.ShippingAddress,
+                    RecipientName = order.RecipientName,
+                    RecipientPhone = order.RecipientPhone,
+                    City = order.ShippingCity,
+                    Country = order.ShippingCountry,
                     OrderDate = order.CreatedAt.Date,
                     ShippingStatus = order.OrderStatus.ToString(),
                     TotalQuantity = totalQuantitiesByOrder.GetValueOrDefault(order.OrderId),

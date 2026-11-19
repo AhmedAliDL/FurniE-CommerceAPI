@@ -4,6 +4,10 @@ namespace App.Application.Orders.Dto
     {
         public Guid OrderId { get; set; }
         public string Address { get; set; } = string.Empty;
+        public string RecipientName { get; set; } = string.Empty;
+        public string RecipientPhone { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string Country { get; set; } = string.Empty;
         public DateTime OrderDate { get; set; }
         public string ShippingStatus { get; set; } = string.Empty;
         public int TotalQuantity { get; set; }

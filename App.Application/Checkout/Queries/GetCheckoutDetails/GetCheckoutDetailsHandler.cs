@@ -28,6 +28,7 @@ namespace App.Application.Checkout.Queries.GetCheckoutDetails
                 ShoppingCartId = shoppingCart.Id,
                 CustomerName = $"{user.FName} {user.LName}".Trim(),
                 Address = user.Address,
+                Phone = user.PhoneNumber ?? string.Empty,
                 City = user.City,
                 Country = user.Country,
                 CartItems = cartItems.Select(ci => new CartItemDto

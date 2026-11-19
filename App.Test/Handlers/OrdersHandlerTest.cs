@@ -127,6 +127,10 @@ namespace App.Test.Handlers
             TotalPrice = 350m,
             ShippingFee = 50m,
             ShippingAddress = "12 Tahrir Square",
+            RecipientName = "Ahmed Ali",
+            RecipientPhone = "+201234567890",
+            ShippingCity = "Cairo",
+            ShippingCountry = "Egypt",
             OrderStatus = status
         };
 
@@ -165,6 +169,42 @@ namespace App.Test.Handlers
                 Assert.That(result.Items[0].ShippingStatus, Is.EqualTo("Processing"));
                 Assert.That(result.Items[0].OrderDate, Is.EqualTo(order.CreatedAt.Date));
                 Assert.That(result.Items[0].RemainingDays, Is.EqualTo(5));
+            });
+        }
+
+        [Test]
+        public async Task EnsureGetUserOrdersHandlerReturnsShippingSnapshotForHistoricalOrders()
+        {
+            var order = ValidOrder();
+            order.RecipientName = "Mona Hassan";
+            order.RecipientPhone = "+201000000000";
+            order.ShippingCity = "Alexandria";
+            order.ShippingCountry = "Egypt";
+
+            _orders.Setup(o => o.FindPagedAsync(
+                    It.IsAny<Expression<Func<Order, bool>>>(),
+                    It.IsAny<Expression<Func<Order, object>>[]>(),
+                    It.IsAny<App.Application.Common.Enums.SortDirection>(),
+                    It.IsAny<Expression<Func<Order, object>>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(((IReadOnlyList<Order>)[order], 1));
+            _orderItems.Setup(oi => oi.FindAllAsync(It.IsAny<Expression<Func<OrderItem, bool>>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OrderItem>
+                {
+                    new() { OrderItemId = Guid.NewGuid(), OrderId = order.OrderId, Quantity = 1 }
+                });
+
+            var result = await _getUserOrdersHandler.Handle(new GetUserOrdersQuery(), It.IsAny<CancellationToken>());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.Items[0].Address, Is.EqualTo("12 Tahrir Square"));
+                Assert.That(result.Items[0].RecipientName, Is.EqualTo("Mona Hassan"));
+                Assert.That(result.Items[0].RecipientPhone, Is.EqualTo("+201000000000"));
+                Assert.That(result.Items[0].City, Is.EqualTo("Alexandria"));
+                Assert.That(result.Items[0].Country, Is.EqualTo("Egypt"));
             });
         }
 
@@ -227,6 +267,61 @@ namespace App.Test.Handlers
             var result = await _getOrderDetailsHandler.Handle(new GetOrderDetailsQuery(order.OrderId), It.IsAny<CancellationToken>());
 
             Assert.That(result[0].IsReviewed, Is.False);
+        }
+
+        [Test]
+        public async Task EnsureGetOrderDetailsHandlerReturnsSnapshottedProductNameWhenProductWasRenamed()
+        {
+            var order = ValidOrder();
+            _orders.Setup(o => o.FindAsync(It.IsAny<Expression<Func<Order, bool>>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(order);
+            _orderItems.Setup(oi => oi.FindAllAsync(It.IsAny<Expression<Func<OrderItem, bool>>>(), It.IsAny<Expression<Func<OrderItem, object>>[]>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OrderItem>
+                {
+                    new()
+                    {
+                        OrderItemId = Guid.NewGuid(),
+                        OrderId = order.OrderId,
+                        ProductId = Guid.NewGuid(),
+                        ProductNameSnapshot = "Sofa (original)",
+                        UnitPrice = 150m,
+                        Quantity = 1,
+                        Product = new Product { ProductName = "Sofa Pro Max 2026" }
+                    }
+                });
+            _reviews.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Review, bool>>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Review?)null);
+
+            var result = await _getOrderDetailsHandler.Handle(new GetOrderDetailsQuery(order.OrderId), It.IsAny<CancellationToken>());
+
+            Assert.That(result[0].ProductName, Is.EqualTo("Sofa (original)"));
+        }
+
+        [Test]
+        public async Task EnsureGetOrderDetailsHandlerFallsBackToLiveProductNameWhenSnapshotIsMissing()
+        {
+            var order = ValidOrder();
+            _orders.Setup(o => o.FindAsync(It.IsAny<Expression<Func<Order, bool>>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(order);
+            _orderItems.Setup(oi => oi.FindAllAsync(It.IsAny<Expression<Func<OrderItem, bool>>>(), It.IsAny<Expression<Func<OrderItem, object>>[]>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<OrderItem>
+                {
+                    new()
+                    {
+                        OrderItemId = Guid.NewGuid(),
+                        OrderId = order.OrderId,
+                        ProductId = Guid.NewGuid(),
+                        UnitPrice = 150m,
+                        Quantity = 1,
+                        Product = new Product { ProductName = "Sofa" }
+                    }
+                });
+            _reviews.Setup(r => r.FindAsync(It.IsAny<Expression<Func<Review, bool>>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Review?)null);
+
+            var result = await _getOrderDetailsHandler.Handle(new GetOrderDetailsQuery(order.OrderId), It.IsAny<CancellationToken>());
+
+            Assert.That(result[0].ProductName, Is.EqualTo("Sofa"));
         }
 
         [Test]

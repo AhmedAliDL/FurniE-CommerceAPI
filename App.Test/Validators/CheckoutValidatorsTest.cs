@@ -102,5 +102,53 @@ namespace App.Test.Validators
 
             Assert.That(result.IsValid, Is.False);
         }
+
+        [Test]
+        public void EnsureThatPlaceOrderCommandIsValidWhenShippingSnapshotProvided()
+        {
+            var command = new PlaceOrderCommand
+            {
+                PaymentMethod = "Cash",
+                City = "Cairo",
+                Address = "Nasr City",
+                Country = "Egypt",
+                RecipientName = "Mona Hassan",
+                RecipientPhone = "+201000000000"
+            };
+
+            var result = _validator.Validate(command);
+
+            Assert.That(result.IsValid, Is.True);
+        }
+
+        [Test]
+        public void EnsureThatPlaceOrderCommandIsInvalidWhenRecipientNameTooLong()
+        {
+            var command = new PlaceOrderCommand { PaymentMethod = "Cash", RecipientName = new string('a', 201) };
+
+            var result = _validator.Validate(command);
+
+            Assert.That(result.IsValid, Is.False);
+        }
+
+        [Test]
+        public void EnsureThatPlaceOrderCommandIsInvalidWhenRecipientPhoneTooLong()
+        {
+            var command = new PlaceOrderCommand { PaymentMethod = "Cash", RecipientPhone = new string('1', 33) };
+
+            var result = _validator.Validate(command);
+
+            Assert.That(result.IsValid, Is.False);
+        }
+
+        [Test]
+        public void EnsureThatPlaceOrderCommandIsInvalidWhenCountryTooLong()
+        {
+            var command = new PlaceOrderCommand { PaymentMethod = "Cash", Country = new string('a', 81) };
+
+            var result = _validator.Validate(command);
+
+            Assert.That(result.IsValid, Is.False);
+        }
     }
 }

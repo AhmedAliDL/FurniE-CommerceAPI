@@ -15,6 +15,15 @@ namespace App.Application.Checkout.Command.PlaceOrder
             RuleFor(o => o.City)
                 .MaximumLength(80)
                 .WithMessage("City must not exceed 80 characters.");
+            RuleFor(o => o.Country)
+                .MaximumLength(80)
+                .WithMessage("Country must not exceed 80 characters.");
+            RuleFor(o => o.RecipientName)
+                .MaximumLength(200)
+                .WithMessage("Recipient name must not exceed 200 characters.");
+            RuleFor(o => o.RecipientPhone)
+                .MaximumLength(32)
+                .WithMessage("Recipient phone must not exceed 32 characters.");
             RuleFor(o => o.CardNumber)
                 .Length(16)
                 .When(o => !string.IsNullOrEmpty(o.CardNumber))

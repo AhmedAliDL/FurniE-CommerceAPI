@@ -30,12 +30,16 @@ namespace App.Application.Orders.Queries.GetOrderDetails
             foreach (var orderItem in orderItems)
             {
                 bool isReviewed = await unitOfWork.Reviews.FindAsync(r => r.UserId == order.UserId && r.ProductId == orderItem.ProductId, cancellationToken) != null;
+                // Legacy rows have no snapshot; fall back to the live name only in that case.
+                string productName = string.IsNullOrWhiteSpace(orderItem.ProductNameSnapshot)
+                    ? orderItem.Product?.ProductName ?? string.Empty
+                    : orderItem.ProductNameSnapshot;
                 orderDetails.Add(new OrderDetailsDto
                 {
                     OrderId = orderItem.OrderId,
                     OrderItemId = orderItem.OrderItemId,
                     ProductId = orderItem.ProductId,
-                    ProductName = orderItem.Product?.ProductName ?? string.Empty,
+                    ProductName = productName,
                     ProductImage = orderItem.Product?.ImageUrl ?? string.Empty,
                     ProductPrice = orderItem.UnitPrice,
                     ProductQuantity = orderItem.Quantity,

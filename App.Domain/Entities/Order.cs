@@ -10,6 +10,10 @@ namespace App.Domain.Entities
         public decimal TotalPrice { get; set; }
         public OrderStatus OrderStatus { get; set; } = OrderStatus.Pending;
         public string ShippingAddress { get; set; } = string.Empty;
+        public string RecipientName { get; set; } = string.Empty;
+        public string RecipientPhone { get; set; } = string.Empty;
+        public string ShippingCity { get; set; } = string.Empty;
+        public string ShippingCountry { get; set; } = string.Empty;
         public decimal CouponDiscount { get; set; } = 0m;
         public decimal ShippingFee { get; set; } = 0m;
         public DateTime? ReviewReminderSentAt { get; set; }

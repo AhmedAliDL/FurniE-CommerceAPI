@@ -74,6 +74,7 @@ namespace App.Test.Handlers
             LName = "Ali",
             Email = "ahmedali@gmail.com",
             Address = "12 Tahrir Square",
+            PhoneNumber = "+201234567890",
             City = "Cairo",
             Country = "Egypt"
         };
@@ -101,6 +102,7 @@ namespace App.Test.Handlers
                 Assert.That(result.ShoppingCartId, Is.EqualTo(cartId));
                 Assert.That(result.CustomerName, Is.EqualTo("Ahmed Ali"));
                 Assert.That(result.Address, Is.EqualTo("12 Tahrir Square"));
+                Assert.That(result.Phone, Is.EqualTo("+201234567890"));
                 Assert.That(result.City, Is.EqualTo("Cairo"));
                 Assert.That(result.Country, Is.EqualTo("Egypt"));
                 Assert.That(result.CartItems, Has.Count.EqualTo(1));
@@ -179,6 +181,90 @@ namespace App.Test.Handlers
             _products.Verify(p => p.Update(It.Is<Product>(prod => prod.StockQuantity == 8)), Times.Once);
             _cartItems.Verify(c => c.Delete(It.IsAny<CartItem>()), Times.Once);
             _unitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Test]
+        public async Task EnsurePlaceOrderHandlerSnapshotsShippingDetailsSuppliedAtCheckout()
+        {
+            var product = new Product { ProductId = Guid.NewGuid(), ProductName = "Sofa", Price = 150m, StockQuantity = 10 };
+            SetupValidCart(product, 1);
+            _shippingRateService.Setup(s => s.GetShippingFee("Alexandria")).Returns(40m);
+
+            var request = new PlaceOrderCommand
+            {
+                City = "Alexandria",
+                Address = "9 Corniche Road",
+                Country = "Egypt",
+                RecipientName = "Mona Hassan",
+                RecipientPhone = "+201000000000",
+                PaymentMethod = "Cash"
+            };
+
+            await _placeOrderHandler.Handle(request, It.IsAny<CancellationToken>());
+
+            _orders.Verify(o => o.AddAsync(It.Is<Order>(ord =>
+                ord.RecipientName == "Mona Hassan" &&
+                ord.RecipientPhone == "+201000000000" &&
+                ord.ShippingAddress == "9 Corniche Road" &&
+                ord.ShippingCity == "Alexandria" &&
+                ord.ShippingCountry == "Egypt"), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Test]
+        public async Task EnsurePlaceOrderHandlerDefaultsShippingSnapshotFromCustomerProfile()
+        {
+            var product = new Product { ProductId = Guid.NewGuid(), ProductName = "Sofa", Price = 150m, StockQuantity = 10 };
+            SetupValidCart(product, 1);
+            _shippingRateService.Setup(s => s.GetShippingFee("Cairo")).Returns(50m);
+
+            await _placeOrderHandler.Handle(new PlaceOrderCommand { PaymentMethod = "Cash" }, It.IsAny<CancellationToken>());
+
+            _orders.Verify(o => o.AddAsync(It.Is<Order>(ord =>
+                ord.RecipientName == "Ahmed Ali" &&
+                ord.RecipientPhone == "+201234567890" &&
+                ord.ShippingAddress == "12 Tahrir Square" &&
+                ord.ShippingCity == "Cairo" &&
+                ord.ShippingCountry == "Egypt"), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Test]
+        public async Task EnsurePlaceOrderHandlerTreatsBlankShippingFieldsAsMissing()
+        {
+            var product = new Product { ProductId = Guid.NewGuid(), ProductName = "Sofa", Price = 150m, StockQuantity = 10 };
+            SetupValidCart(product, 1);
+            _shippingRateService.Setup(s => s.GetShippingFee("Cairo")).Returns(50m);
+
+            var request = new PlaceOrderCommand
+            {
+                PaymentMethod = "Cash",
+                Address = "",
+                City = "",
+                Country = "",
+                RecipientName = "",
+                RecipientPhone = ""
+            };
+
+            await _placeOrderHandler.Handle(request, It.IsAny<CancellationToken>());
+
+            _orders.Verify(o => o.AddAsync(It.Is<Order>(ord =>
+                ord.RecipientName == "Ahmed Ali" &&
+                ord.RecipientPhone == "+201234567890" &&
+                ord.ShippingAddress == "12 Tahrir Square" &&
+                ord.ShippingCity == "Cairo" &&
+                ord.ShippingCountry == "Egypt"), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Test]
+        public async Task EnsurePlaceOrderHandlerSnapshotsProductNameOnOrderItem()
+        {
+            var product = new Product { ProductId = Guid.NewGuid(), ProductName = "Linen Sofa", Price = 150m, StockQuantity = 10 };
+            SetupValidCart(product, 1);
+            _shippingRateService.Setup(s => s.GetShippingFee(It.IsAny<string>())).Returns(50m);
+
+            await _placeOrderHandler.Handle(new PlaceOrderCommand { PaymentMethod = "Cash" }, It.IsAny<CancellationToken>());
+
+            _orderItems.Verify(oi => oi.AddRangeAsync(It.Is<List<OrderItem>>(items =>
+                items.Count == 1 && items[0].ProductNameSnapshot == "Linen Sofa"), It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Test]

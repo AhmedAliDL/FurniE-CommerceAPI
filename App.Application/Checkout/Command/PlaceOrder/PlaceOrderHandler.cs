@@ -66,6 +66,7 @@ namespace App.Application.Checkout.Command.PlaceOrder
                 orderItems.Add(new OrderItem
                 {
                     ProductId = cartItem.ProductId,
+                    ProductNameSnapshot = cartItem.Product.ProductName,
                     Quantity = cartItem.ItemQuantity,
                     UnitPrice = unitPrice
                 });
@@ -82,13 +83,27 @@ namespace App.Application.Checkout.Command.PlaceOrder
             string city = !string.IsNullOrWhiteSpace(request.City) ? request.City : user.City;
             decimal shippingFee = shippingRateService.GetShippingFee(city);
 
+            // Delivery details are snapshotted on the order so later profile edits cannot rewrite history.
+            string recipientName = string.IsNullOrWhiteSpace(request.RecipientName)
+                ? $"{user.FName} {user.LName}".Trim()
+                : request.RecipientName.Trim();
+            string recipientPhone = string.IsNullOrWhiteSpace(request.RecipientPhone)
+                ? user.PhoneNumber ?? string.Empty
+                : request.RecipientPhone.Trim();
+            string shippingAddress = string.IsNullOrWhiteSpace(request.Address) ? user.Address : request.Address;
+            string shippingCountry = string.IsNullOrWhiteSpace(request.Country) ? user.Country : request.Country;
+
             var order = new Order
             {
                 UserId = userId,
                 TotalPrice = itemsSubtotal + shippingFee,
                 ShippingFee = shippingFee,
                 OrderStatus = OrderStatus.Processing,
-                ShippingAddress = request.Address ?? user.Address,
+                ShippingAddress = shippingAddress,
+                RecipientName = recipientName,
+                RecipientPhone = recipientPhone,
+                ShippingCity = city,
+                ShippingCountry = shippingCountry,
                 CouponDiscount = discountPercent
             };
             // The order id is generated on Add, so the items connect through the navigation.
