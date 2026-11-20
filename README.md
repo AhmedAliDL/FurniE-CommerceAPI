@@ -6,8 +6,8 @@
 | --- | --- |
 | Live API | <https://furniapi.runasp.net> |
 | Swagger UI | <https://furniapi.runasp.net/swagger> |
-| Test suite | 706 NUnit tests, all passing |
-| Deployed endpoints | 97 routes, all verified against the live API |
+| Test suite | 727 NUnit tests, all passing |
+| Deployed endpoints | All controllers served under `/api/...` with additive `/api/v1/...` aliases |
 
 > The API is JWT-secured, validates every request with FluentValidation, records payment webhooks idempotently, and runs scheduled maintenance/reporting jobs with Hangfire.
 
@@ -94,15 +94,18 @@ The codebase follows **Clean Architecture** with **CQRS**: controllers are thin,
 - User administration (paginated search, activate/deactivate; cannot deactivate yourself).
 - Role administration (create, assign, unassign, delete; built-in roles protected).
 - Coupon management with server-side validation (expiry, percentage).
-- Audit log viewer (currently records `Notification` changes through `IAuditLog`).
+- Audit log viewer over every entity implementing `IAuditLog` (all key business entities).
 - Contact form that sends branded HTML email.
 - Hangfire dashboard at `/hangfire` for recurring jobs and their history.
 
 ### Platform
 
 - JWT access tokens + rotating refresh tokens stored in an `HttpOnly`, `Secure` cookie.
-- Role-based authorization (`Admin`, `SupportAgent`, `Customer`) plus ownership checks in handlers.
-- Global rate limiter: 100 requests per minute per user/anonymous partition.
+- Role-based authorization (`Admin`, `SupportAgent`, `Customer`) plus ownership checks in handlers; a global fallback policy requires authentication on any endpoint without explicit metadata.
+- ERP integration surfaces: product SKUs (unique, snapshotted on order lines), a transactional outbox (`IntegrationOutbox`) drained to an external ERP, a typed `OrderStatusHistory` timeline, and an `IntegrationClient` token policy guarded by `X-Integration-Api-Key`.
+- Anonymous `GET /health` probe reporting database and Redis connectivity.
+- Every controller is also routable under `/api/v1/...`; the legacy `/api/...` paths keep working.
+- Global rate limiter: 100 requests per minute per user/anonymous partition (`/health` is exempt).
 - RFC 7807 `ProblemDetails` error responses with an `errors` array.
 - Soft delete with global query filters; deleted rows disappear from every repository.
 - Branded HTML email for every outgoing message.
@@ -168,7 +171,7 @@ Authentication                   → JWT bearer (query token allowed for /hubs)
    ↓
 Rate limiter                     → 429 after 100 requests/minute per user
    ↓
-Authorization                    → role requirements
+Authorization                    → roles, ownership, and the Integration policy (global fallback requires authentication)
    ↓
 Controller                       → ISender.Send(command | query)
    ↓
@@ -202,8 +205,9 @@ ResponseResult<T> | PagedResult<T> | DTO
 | --- | --- |
 | Soft delete | `ISoftDeletable` + global query filters + `SoftDeleteInterceptor`. Exempt: `AppUser`, `AuditLog`, `RefreshToken`, `IdempotencyRecord`. |
 | Audit fields | `CreatedAt` set by the database on insert; mutating handlers set `UpdatedAt` explicitly. |
-| Audit trail | `AuditInterceptor` writes an `AuditLog` row for entities implementing `IAuditLog` (currently `Notification`). |
+| Audit trail | `AuditInterceptor` writes an `AuditLog` row (old/new values as JSON) for entities implementing `IAuditLog`. |
 | Id generation | EF generates all `Guid` keys; handlers never call `Guid.NewGuid()` for new entities. |
+| Order trace | `UnitOfWork.CompleteAsync` appends an `OrderStatusHistory` row for every detected status change and publishes `OrderStatusChanged` to the outbox (creation is announced by `OrderPlaced`). |
 | Money | `decimal` throughout the domain; cents are used only at the Paymob boundary. |
 | Pagination | Every unbounded list uses `FindPagedAsync` and validates `Page >= 1`, `PageSize` 1–100. |
 | Secrets | Loaded from appsettings/environment/`.env`; never logged or returned by the API. |
@@ -220,7 +224,7 @@ ResponseResult<T> | PagedResult<T> | DTO
 | Orders | `Order`, `OrderItem`, `CancellationRequest`, `ReturnRequest`, `ReturnItem`, `Payment` |
 | Payments | `PaymentTransaction`, `IdempotencyRecord` |
 | Support | `SupportTicket`, `SupportConversation`, `SupportMessage` |
-| Operations | `Notification`, `AuditLog` |
+| Operations | `Notification`, `AuditLog`, `IntegrationOutboxMessage`, `OrderStatusHistory` |
 
 Core relationships:
 
@@ -252,7 +256,7 @@ Entities use `Guid` keys, audit timestamps, and soft-delete flags (except the fo
 
 ### Database notes
 
-- The API **does not run EF migrations at runtime** and does not create the schema. The schema is provisioned with raw SQL scripts maintained outside the repository; `App.Infrastructure/Migrations` is historical and is not the deployment mechanism.
+- The API **does not run EF migrations at runtime** and does not create the schema. The schema is provisioned with raw SQL; incremental changes are kept under `db/` (for example `db/ErpIntegrationReadiness_20261120.sql`). `App.Infrastructure/Migrations` is historical and is not the deployment mechanism.
 - Hangfire stores its own tables in the same SQL Server database.
 - Redis is used for recently-viewed history and OTP state, not as a general cache.
 
@@ -359,6 +363,14 @@ sequenceDiagram
 - Closed conversations reject agent replies with a `HubException`.
 - `messagesRead` is broadcast when a participant marks the conversation read.
 
+### 6.7 ERP integration
+
+- Outbound events are written to `IntegrationOutbox` in the **same transaction** as the business change and drained every minute to `Integration:EventsEndpoint`.
+- Event types: `OrderPlaced`, `OrderStatusChanged`, `PaymentSucceeded`, `PaymentFailed`, `Refunded`, `Voided`, `ReturnRequested`. Each delivery carries `X-Event-Id`, `X-Event-Type`, and `X-Api-Key`.
+- Delivery is **at-least-once**: the ERP should deduplicate on `X-Event-Id`. Failed rows retry up to 10 times, then stay in the table with `Attempts`/`LastError` for inspection.
+- Inbound calls use a hand-issued JWT containing the `IntegrationClient` role plus the `X-Integration-Api-Key` header; the key set lives in `Integration:ApiKeys`.
+- Order SKUs (`Product.Sku`) are the shared business key; each order line keeps a `ProductSkuSnapshot` taken at checkout.
+
 ---
 
 ## 7. API reference
@@ -373,12 +385,14 @@ sequenceDiagram
 | Refresh token | `HttpOnly`, `Secure` cookie set by login/refresh; rotated on every refresh |
 | Content type | `application/json` (multipart for image uploads) |
 | Pagination | `?page=1&pageSize=20` (`pageSize` 1–100) |
-| Idempotency | `Idempotency-Key` header on checkout and an `idempotencyKey` body field on payment sessions |
+| Idempotency | `Idempotency-Key` header on checkout, payment session, refund, void, cancellation approval, and return refund (body field also accepted where the command exposes it) |
 | Swagger | `/swagger` (enabled in every environment) |
+| Health | `GET /health` (anonymous; database + Redis, unrated) |
 | Hangfire | `/hangfire` (Admin JWT or loopback only) |
+| Versioning | Legacy `/api/...` paths and additive `/api/v1/...` aliases both resolve to the same actions |
 | Rate limit | 100 requests/minute per user (or anonymous partition) → `429` |
 
-**Access legend:** `Public` = anonymous, `Auth` = any signed-in user, `Owner` = owner of the resource, `Staff` = `Admin` or `SupportAgent`, `Admin` = `Admin` only.
+**Access legend:** `Public` = anonymous, `Auth` = any signed-in user, `Owner` = owner of the resource, `Staff` = `Admin` or `SupportAgent`, `Admin` = `Admin` only, `Integration` = ERP JWT with the `IntegrationClient` role **and** a valid `X-Integration-Api-Key` header.
 
 ### 7.1 Authentication — `/api/auth`
 
@@ -411,8 +425,9 @@ sequenceDiagram
 | GET | `/api/products/{productId}` | Public | Product by id |
 | GET | `/api/products/{productId}/details` | Public | Product details |
 | GET | `/api/products/recently-viewed` | Auth | Redis-backed history |
-| POST | `/api/products` | Admin | Create a product |
+| POST | `/api/products` | Admin | Create a product (optional unique `sku`) |
 | PUT | `/api/products/{productId}` | Admin | Update; may enqueue price-drop alerts |
+| PUT | `/api/products/{productId}/stock` | Admin / Integration | Set stock; zero deactivates the product |
 | DELETE | `/api/products/{productId}` | Admin | Soft delete (blocked if ordered) |
 
 **Product images — `/api/products/{productId}/images`**
@@ -475,13 +490,14 @@ sequenceDiagram
 | POST | `/api/orders/{orderId}/cancellation-request` | Owner | Request cancellation of a paid order |
 | POST | `/api/orders/{orderId}/return-request` | Owner | Request a return after delivery |
 | GET | `/api/orders/cancellation-requests` | Admin | Cancellation queue (paginated) |
-| POST | `/api/orders/cancellation-requests/{requestId}/approve` | Admin | Void payment, cancel, restore stock |
+| POST | `/api/orders/cancellation-requests/{requestId}/approve` | Admin | Void payment, cancel, restore stock (`Idempotency-Key` supported) |
 | POST | `/api/orders/cancellation-requests/{requestId}/reject` | Admin | Reject the request |
 | GET | `/api/orders/return-requests` | Admin | Return queue (paginated) |
 | POST | `/api/orders/return-requests/{requestId}/accept` | Admin | Assign courier |
 | POST | `/api/orders/return-requests/{requestId}/receive` | Admin | Mark received/inspection |
 | POST | `/api/orders/return-requests/{requestId}/reject` | Admin | Reject the return |
-| POST | `/api/orders/return-requests/{requestId}/process-refund` | Admin | Refund with cap enforcement |
+| POST | `/api/orders/return-requests/{requestId}/process-refund` | Admin | Refund with cap enforcement (`Idempotency-Key` supported) |
+| PUT | `/api/orders/{orderId}/erp-reference` | Integration | Record the ERP order and invoice identifiers |
 | DELETE | `/api/orders/{orderId}` | Owner / Admin | Delete an unpaid, inactive order |
 | DELETE | `/api/orders/{orderId}/items/{productId}` | Owner / Admin | Remove an item pre-shipment |
 
@@ -489,12 +505,12 @@ sequenceDiagram
 
 | Method | Endpoint | Access | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/payments/session` | Auth (owner) | Create a Paymob intention and checkout URL |
+| POST | `/api/payments/session` | Auth (owner) | Create a Paymob intention and checkout URL (`Idempotency-Key` supported) |
 | POST | `/api/payments/callback` | Public | Paymob webhook (`?hmac=`), HMAC-verified, idempotent |
 | GET | `/api/payments/transactions` | Admin | Paginated transactions, optional `orderId` filter |
 | GET | `/api/payments/transactions/all` | Admin | Paginated transactions without an order filter |
-| POST | `/api/payments/refund` | Admin | Partial/full refund on a delivered order |
-| POST | `/api/payments/void` | Admin | Void within 24 hours of payment |
+| POST | `/api/payments/refund` | Admin | Partial/full refund on a delivered order (`Idempotency-Key` supported) |
+| POST | `/api/payments/void` | Admin | Void within 24 hours of payment (`Idempotency-Key` supported) |
 
 ### 7.6 Coupons — `/api/coupons`
 
@@ -639,6 +655,9 @@ Configuration is read from `appsettings.json`, `appsettings.{Environment}.json`,
 | `FileStorage:MaxFileSizeBytes`, `AllowedExtensions`, `MaxFilesPerUpload` | Upload limits |
 | `RecentlyViewed:MaxItems`, `ExpiryDays` | Redis history caps |
 | `Cors:AllowedOrigins` | Allowed browser origins (array; falls back to `http://localhost:4200`) |
+| `Integration:RoleName` | Role required on hand-issued ERP tokens (default `IntegrationClient`) |
+| `Integration:ApiKeys` | Comma-separated API keys accepted in `X-Integration-Api-Key`; the first key is also sent outbound |
+| `Integration:EventsEndpoint` | ERP webhook URL that receives outbox events (dispatch is skipped when unset) |
 | `AllowedHosts` | Host filtering |
 
 Example `.env` (placeholders only):
@@ -665,6 +684,9 @@ Paymob__NotificationUrl=<public-callback-url>
 Paymob__RedirectionUrl=<frontend-redirect-url>
 CLOUDINARY_URL=cloudinary://<api-key>:<api-secret>@<cloud-name>
 AUTHEVO_KEY=<authevo-key>
+Integration__RoleName=IntegrationClient
+Integration__ApiKeys=<comma-separated-api-keys>
+Integration__EventsEndpoint=<erp-events-webhook-url>
 ```
 
 > `.env` and `appsettings.Development.json` are git-ignored. Use environment variables or user-secrets in environments where files are not appropriate.
@@ -741,7 +763,7 @@ dotnet test "Furni E-Commerce Service.sln"
 ```
 
 - **Framework:** NUnit 5 + Moq 4.21
-- **Suite:** 706 tests, all passing
+- **Suite:** 727 tests, all passing
 - **Layout:**
   - `App.Test/Controllers` — one fixture per controller, mocking `IMediator`.
   - `App.Test/Handlers` — one fixture per feature, mocking UnitOfWork/repositories/services.
@@ -764,6 +786,7 @@ dotnet test "Furni E-Commerce Service.sln"
 | `OrderReviewReminderBackgroundJob` | Daily | Emails review reminders for delivered orders (idempotent via `ReviewReminderSentAt`) |
 | `ScheduledOrderReminderBackgroundJob` | Daily | Emails shipping/delivery reminders for orders in the expected statuses |
 | `PriceDropDetectionBackgroundJob` | Enqueued on product price update | Emails wishlist owners when a saved product drops in price |
+| `IntegrationOutboxBackgroundJob` | Every minute | Drains pending `IntegrationOutbox` rows to the ERP webhook, marking success/failure |
 
 Jobs are registered at startup and visible at `/hangfire`. The dashboard accepts an Admin JWT or loopback requests only.
 
@@ -775,13 +798,14 @@ The current deployment is hosted at **<https://furniapi.runasp.net>** with Swagg
 
 Checklist for a deployment:
 
-1. Provision SQL Server and apply the schema SQL.
-2. Provide all configuration values through environment variables (or a `.env` file that is never committed).
+1. Provision SQL Server and apply the schema SQL, including the incremental scripts under `db/` (`db/ErpIntegrationReadiness_20261120.sql` for SKU, ERP references, outbox, and status history).
+2. Provide all configuration values through environment variables (or a `.env` file that is never committed). For ERP integration also set `Integration__ApiKeys` and `Integration__EventsEndpoint` on the host.
 3. Ensure Redis is reachable.
 4. Configure Paymob's `NotificationUrl` with the public `POST /api/payments/callback` URL and set the same `HmacSecret` used by Paymob.
 5. Configure Cloudinary (`CLOUDINARY_URL`) — the application fails fast at startup without it.
 6. Configure `Cors:AllowedOrigins` for the frontend origin(s).
 7. Publish `App.Api` and verify:
+   - `GET /health` returns `200` with healthy database and Redis checks.
    - `GET /swagger/v1/swagger.json` returns the route list.
    - `/hangfire` is reachable by an admin.
    - A test login returns a JWT, and an authenticated endpoint returns 200.
@@ -792,9 +816,11 @@ Checklist for a deployment:
 
 ## 13. Operational notes and known limitations
 
-- **Schema DDL is not in this repository.** It is maintained as raw SQL and applied manually; the historical `Migrations` folder is not used.
+- **Incremental schema scripts live under `db/`.** The base schema is maintained as raw SQL and applied manually; the historical `Migrations` folder is not used.
 - **Cloudinary is mandatory at startup.** Missing `CLOUDINARY_URL`/`Cloudinary:Url` throws during service registration.
-- **Audit coverage is narrow.** Only entities implementing `IAuditLog` are recorded; currently that is `Notification` only.
+- **Audit coverage is broad.** Every entity implementing `IAuditLog` is recorded with old/new JSON values; the GUID key is resolved from EF metadata.
+- **ERP outbox delivery is at-least-once.** Consumers must deduplicate on `X-Event-Id`; rows stop retrying after 10 attempts and remain in `IntegrationOutbox` for inspection.
+- **Order status history starts with the deployment that introduced it.** Orders created earlier have no backfilled `OrderStatusHistory` rows.
 - **No restore endpoint** for soft-deleted rows. Repositories intentionally expose no `IgnoreQueryFilters` escape hatch.
 - **OTP handlers depend on the live AUTHEVO provider** and are excluded from unit tests.
 - **Paymob refunds/voids depend on settlement state.** The API enforces 24-hour void and 14-day refund windows; Paymob may still reject an operation that has already settled.
