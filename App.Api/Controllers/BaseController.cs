@@ -6,7 +6,6 @@ namespace App.Api.Controllers
     /// <summary>
     /// Base class for API controllers that dispatch commands and queries through MediatR.
     /// </summary>
-    [Route("api/[controller]")]
     [ApiController]
     public class BaseController : ControllerBase
     {

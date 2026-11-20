@@ -15,7 +15,6 @@ namespace App.Api.Controllers
     /// Manages a product's images: listing, upload, primary selection, reordering, and deletion.
     /// </summary>
     [ApiController]
-    [Route("api/products/{productId:guid}/images")]
     [Route("api/v1/products/{productId:guid}/images")]
     public class ProductImagesController : BaseController
     {

@@ -16,7 +16,6 @@ namespace App.Api.Controllers
     /// Provides coupon listing, validation, and management endpoints.
     /// </summary>
     [ApiController]
-    [Route("api/coupons")]
     [Route("api/v1/coupons")]
     [Authorize]
     public class CouponController : BaseController

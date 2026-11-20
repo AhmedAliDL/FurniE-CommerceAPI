@@ -14,7 +14,6 @@ namespace App.Api.Controllers
     /// Manages the authenticated user's shopping cart.
     /// </summary>
     [ApiController]
-    [Route("api/cart")]
     [Route("api/v1/cart")]
     [Authorize]
     public class ShoppingCartController : BaseController

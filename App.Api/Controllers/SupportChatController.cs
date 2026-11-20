@@ -15,7 +15,6 @@ namespace App.Api.Controllers
     /// Handles the chat conversation attached to a support ticket. Sending messages is done through the SupportHub SignalR connection only.
     /// </summary>
     [ApiController]
-    [Route("api/support-tickets/{ticketId:guid}/chat")]
     [Route("api/v1/support-tickets/{ticketId:guid}/chat")]
     [Authorize]
     public class SupportChatController : BaseController

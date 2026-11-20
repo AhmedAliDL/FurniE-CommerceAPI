@@ -12,7 +12,6 @@ namespace App.Api.Controllers
     /// Provides user administration endpoints. Admin only.
     /// </summary>
     [ApiController]
-    [Route("api/users")]
     [Route("api/v1/users")]
     [Authorize(Roles = "Admin")]
     public class UserController : BaseController

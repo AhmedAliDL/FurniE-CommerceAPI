@@ -12,7 +12,6 @@ namespace App.Api.Controllers
     /// Handles contact details and contact-form email delivery.
     /// </summary>
     [ApiController]
-    [Route("api/contact")]
     [Route("api/v1/contact")]
     [Authorize]
     public class ContactController : BaseController

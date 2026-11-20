@@ -13,7 +13,6 @@ namespace App.Api.Controllers
     /// Manages the authenticated user's product wishlist.
     /// </summary>
     [ApiController]
-    [Route("api/wishlist")]
     [Route("api/v1/wishlist")]
     [Authorize]
     public class WishlistController : BaseController

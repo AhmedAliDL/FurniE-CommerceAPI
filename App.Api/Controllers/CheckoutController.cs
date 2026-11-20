@@ -12,7 +12,6 @@ namespace App.Api.Controllers
     /// Handles checkout details and order placement.
     /// </summary>
     [ApiController]
-    [Route("api/checkout")]
     [Route("api/v1/checkout")]
     [Authorize]
     public class CheckoutController : BaseController

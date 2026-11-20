@@ -11,7 +11,6 @@ namespace App.Api.Controllers
     /// <summary>
     /// Handles admin notifications.
     /// </summary>
-    [Route("api/notifications")]
     [Route("api/v1/notifications")]
     [Authorize(Roles = "Admin")]
     public class NotificationController : BaseController

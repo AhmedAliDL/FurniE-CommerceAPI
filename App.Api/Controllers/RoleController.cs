@@ -14,7 +14,6 @@ namespace App.Api.Controllers
     /// Manages application roles and user role assignments. Admin only.
     /// </summary>
     [ApiController]
-    [Route("api/roles")]
     [Route("api/v1/roles")]
     [Authorize(Roles = "Admin")]
     public class RoleController : BaseController

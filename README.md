@@ -7,7 +7,7 @@
 | Live API | <https://furniapi.runasp.net> |
 | Swagger UI | <https://furniapi.runasp.net/swagger> |
 | Test suite | 727 NUnit tests, all passing |
-| Deployed endpoints | All controllers served under `/api/...` with additive `/api/v1/...` aliases |
+| Deployed endpoints | All controllers served under `/api/v1/...` |
 
 > The API is JWT-secured, validates every request with FluentValidation, records payment webhooks idempotently, and runs scheduled maintenance/reporting jobs with Hangfire.
 
@@ -104,7 +104,7 @@ The codebase follows **Clean Architecture** with **CQRS**: controllers are thin,
 - Role-based authorization (`Admin`, `SupportAgent`, `Customer`) plus ownership checks in handlers; a global fallback policy requires authentication on any endpoint without explicit metadata.
 - ERP integration surfaces: product SKUs (unique, snapshotted on order lines), a transactional outbox (`IntegrationOutbox`) drained to an external ERP, a typed `OrderStatusHistory` timeline, and an `IntegrationClient` token policy guarded by `X-Integration-Api-Key`.
 - Anonymous `GET /health` probe reporting database and Redis connectivity.
-- Every controller is also routable under `/api/v1/...`; the legacy `/api/...` paths keep working.
+- Every controller is served under `/api/v1/...`; legacy `/api/...` paths are no longer exposed.
 - Global rate limiter: 100 requests per minute per user/anonymous partition (`/health` is exempt).
 - RFC 7807 `ProblemDetails` error responses with an `errors` array.
 - Soft delete with global query filters; deleted rows disappear from every repository.
@@ -295,7 +295,7 @@ Allowed admin transitions are enforced by `OrderStatusTransitions`; anything els
 
 ### 6.3 Cancellations
 
-1. **Unpaid order** — the customer cancels directly (`PUT /api/orders/{orderId}/cancel`). Only `Pending`, `Confirmed`, and `Processing` orders are cancellable, and only by their owner.
+1. **Unpaid order** — the customer cancels directly (`PUT /api/v1/orders/{orderId}/cancel`). Only `Pending`, `Confirmed`, and `Processing` orders are cancellable, and only by their owner.
 2. **Paid order** — the customer submits a cancellation request while the order is pre-shipment.
 3. **Admin approval** — voids the successful Paymob transaction, marks the payment and transaction `Voided`, cancels the order, restores stock, and notifies the customer.
 4. **Admin rejection** — returns the order to `Processing`-style fulfilment and notifies the customer.
@@ -324,12 +324,12 @@ sequenceDiagram
     participant A as Furni API
     participant P as Paymob
 
-    C->>A: POST /api/payments/session {orderId}
+    C->>A: POST /api/v1/payments/session {orderId}
     A->>P: POST /v1/intention (amount cents, special_reference = orderId)
     P-->>A: client_secret
     A-->>C: { clientSecret, checkoutUrl, paymentMethods }
     C->>P: completes checkout (card / wallet)
-    P->>A: POST /api/payments/callback?hmac=...
+    P->>A: POST /api/v1/payments/callback?hmac=...
     A->>A: verify HMAC → dedupe by transaction id → persist
     A->>A: mark Payment Completed / Failed / Pending
     A-->>P: 200 OK
@@ -389,209 +389,209 @@ sequenceDiagram
 | Swagger | `/swagger` (enabled in every environment) |
 | Health | `GET /health` (anonymous; database + Redis, unrated) |
 | Hangfire | `/hangfire` (Admin JWT or loopback only) |
-| Versioning | Legacy `/api/...` paths and additive `/api/v1/...` aliases both resolve to the same actions |
+| Versioning | All controllers are served under `/api/v1/...` only |
 | Rate limit | 100 requests/minute per user (or anonymous partition) → `429` |
 
 **Access legend:** `Public` = anonymous, `Auth` = any signed-in user, `Owner` = owner of the resource, `Staff` = `Admin` or `SupportAgent`, `Admin` = `Admin` only, `Integration` = ERP JWT with the `IntegrationClient` role **and** a valid `X-Integration-Api-Key` header.
 
-### 7.1 Authentication — `/api/auth`
+### 7.1 Authentication — `/api/v1/auth`
 
 | Method | Endpoint | Access | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/auth/register` | Public | Create a customer account |
-| POST | `/api/auth/login` | Public | Authenticate; returns JWT and sets refresh cookie |
-| POST | `/api/auth/refresh-token` | Public (cookie) | Rotate access/refresh tokens |
-| DELETE | `/api/auth/logout` | Auth | Revoke the refresh token |
-| POST | `/api/auth/send-email-confirmation` | Public | Send the email confirmation link |
-| POST | `/api/auth/confirm-email` | Public | Confirm an email address |
-| POST | `/api/auth/forget-password` | Public | Send a password-reset email |
-| POST | `/api/auth/reset-password` | Public | Reset the password with a token |
-| POST | `/api/auth/send-phone-otp` | Auth | Send a phone OTP via AUTHEVO |
-| POST | `/api/auth/verify-phone` | Auth | Verify the phone OTP |
-| GET | `/api/auth/profile` | Auth | Current user profile |
-| PUT | `/api/auth/profile` | Auth | Update profile |
-| POST | `/api/auth/change-password` | Auth | Change the password |
+| POST | `/api/v1/auth/register` | Public | Create a customer account |
+| POST | `/api/v1/auth/login` | Public | Authenticate; returns JWT and sets refresh cookie |
+| POST | `/api/v1/auth/refresh-token` | Public (cookie) | Rotate access/refresh tokens |
+| DELETE | `/api/v1/auth/logout` | Auth | Revoke the refresh token |
+| POST | `/api/v1/auth/send-email-confirmation` | Public | Send the email confirmation link |
+| POST | `/api/v1/auth/confirm-email` | Public | Confirm an email address |
+| POST | `/api/v1/auth/forget-password` | Public | Send a password-reset email |
+| POST | `/api/v1/auth/reset-password` | Public | Reset the password with a token |
+| POST | `/api/v1/auth/send-phone-otp` | Auth | Send a phone OTP via AUTHEVO |
+| POST | `/api/v1/auth/verify-phone` | Auth | Verify the phone OTP |
+| GET | `/api/v1/auth/profile` | Auth | Current user profile |
+| PUT | `/api/v1/auth/profile` | Auth | Update profile |
+| POST | `/api/v1/auth/change-password` | Auth | Change the password |
 
 ### 7.2 Catalog
 
-**Products — `/api/products`**
+**Products — `/api/v1/products`**
 
 | Method | Endpoint | Access | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/products` | Admin | All products (paginated) |
-| GET | `/api/products/search` | Public | Search/filter/sort + pagination |
-| GET | `/api/products/active` | Public | Active products + categories |
-| GET | `/api/products/category/{categoryName}` | Public | Products in a category |
-| GET | `/api/products/{productId}` | Public | Product by id |
-| GET | `/api/products/{productId}/details` | Public | Product details |
-| GET | `/api/products/recently-viewed` | Auth | Redis-backed history |
-| POST | `/api/products` | Admin | Create a product (optional unique `sku`) |
-| PUT | `/api/products/{productId}` | Admin | Update; may enqueue price-drop alerts |
-| PUT | `/api/products/{productId}/stock` | Admin / Integration | Set stock; zero deactivates the product |
-| DELETE | `/api/products/{productId}` | Admin | Soft delete (blocked if ordered) |
+| GET | `/api/v1/products` | Admin | All products (paginated) |
+| GET | `/api/v1/products/search` | Public | Search/filter/sort + pagination |
+| GET | `/api/v1/products/active` | Public | Active products + categories |
+| GET | `/api/v1/products/category/{categoryName}` | Public | Products in a category |
+| GET | `/api/v1/products/{productId}` | Public | Product by id |
+| GET | `/api/v1/products/{productId}/details` | Public | Product details |
+| GET | `/api/v1/products/recently-viewed` | Auth | Redis-backed history |
+| POST | `/api/v1/products` | Admin | Create a product (optional unique `sku`) |
+| PUT | `/api/v1/products/{productId}` | Admin | Update; may enqueue price-drop alerts |
+| PUT | `/api/v1/products/{productId}/stock` | Admin / Integration | Set stock; zero deactivates the product |
+| DELETE | `/api/v1/products/{productId}` | Admin | Soft delete (blocked if ordered) |
 
-**Product images — `/api/products/{productId}/images`**
-
-| Method | Endpoint | Access | Purpose |
-| --- | --- | --- | --- |
-| GET | `/api/products/{productId}/images` | Public | List images |
-| POST | `/api/products/{productId}/images` | Admin | Upload 1–10 images to Cloudinary |
-| PUT | `/api/products/{productId}/images/{imageId}/primary` | Admin | Set primary |
-| PUT | `/api/products/{productId}/images/order` | Admin | Reorder all images |
-| DELETE | `/api/products/{productId}/images/{imageId}` | Admin | Delete image and Cloudinary asset |
-
-**Categories — `/api/categories`**
+**Product images — `/api/v1/products/{productId}/images`**
 
 | Method | Endpoint | Access | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/categories` | Public | List categories |
-| POST | `/api/categories` | Admin | Create |
-| PUT | `/api/categories/{categoryId}` | Admin | Update |
-| DELETE | `/api/categories/{categoryId}` | Admin | Delete |
+| GET | `/api/v1/products/{productId}/images` | Public | List images |
+| POST | `/api/v1/products/{productId}/images` | Admin | Upload 1–10 images to Cloudinary |
+| PUT | `/api/v1/products/{productId}/images/{imageId}/primary` | Admin | Set primary |
+| PUT | `/api/v1/products/{productId}/images/order` | Admin | Reorder all images |
+| DELETE | `/api/v1/products/{productId}/images/{imageId}` | Admin | Delete image and Cloudinary asset |
+
+**Categories — `/api/v1/categories`**
+
+| Method | Endpoint | Access | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/categories` | Public | List categories |
+| POST | `/api/v1/categories` | Admin | Create |
+| PUT | `/api/v1/categories/{categoryId}` | Admin | Update |
+| DELETE | `/api/v1/categories/{categoryId}` | Admin | Delete |
 
 ### 7.3 Cart and wishlist
 
-**Cart — `/api/cart`** (all `Auth`)
+**Cart — `/api/v1/cart`** (all `Auth`)
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| GET | `/api/cart` | Get the current cart |
-| DELETE | `/api/cart` | Clear the cart |
-| POST | `/api/cart/items/{productId}` | Add an item |
-| PUT | `/api/cart/quantities` | Batch-update quantities |
-| DELETE | `/api/cart/items/{productId}` | Remove an item |
+| GET | `/api/v1/cart` | Get the current cart |
+| DELETE | `/api/v1/cart` | Clear the cart |
+| POST | `/api/v1/cart/items/{productId}` | Add an item |
+| PUT | `/api/v1/cart/quantities` | Batch-update quantities |
+| DELETE | `/api/v1/cart/items/{productId}` | Remove an item |
 
-**Wishlist — `/api/wishlist`** (all `Auth`)
+**Wishlist — `/api/v1/wishlist`** (all `Auth`)
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| GET | `/api/wishlist` | List saved products |
-| POST | `/api/wishlist/{productId}` | Idempotent add |
-| POST | `/api/wishlist/{productId}/move-to-cart` | Move to cart and remove |
-| DELETE | `/api/wishlist/{productId}` | Remove |
+| GET | `/api/v1/wishlist` | List saved products |
+| POST | `/api/v1/wishlist/{productId}` | Idempotent add |
+| POST | `/api/v1/wishlist/{productId}/move-to-cart` | Move to cart and remove |
+| DELETE | `/api/v1/wishlist/{productId}` | Remove |
 
 ### 7.4 Checkout and orders
 
-**Checkout — `/api/checkout`** (all `Auth`)
+**Checkout — `/api/v1/checkout`** (all `Auth`)
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| POST | `/api/checkout` | Get checkout details and totals |
-| POST | `/api/checkout/place-order` | Place the order (`Idempotency-Key` supported) |
+| POST | `/api/v1/checkout` | Get checkout details and totals |
+| POST | `/api/v1/checkout/place-order` | Place the order (`Idempotency-Key` supported) |
 
-**Orders — `/api/orders`** (class: `Auth`)
-
-| Method | Endpoint | Access | Purpose |
-| --- | --- | --- | --- |
-| GET | `/api/orders` | Auth | Current user's orders (paginated) |
-| GET | `/api/orders/{orderId}/details` | Owner / Staff | Order details with `OrderItemId` |
-| PUT | `/api/orders/{orderId}/status` | Admin | Validated status transition |
-| PUT | `/api/orders/{orderId}/cancel` | Owner | Cancel an unpaid order |
-| POST | `/api/orders/{orderId}/cancellation-request` | Owner | Request cancellation of a paid order |
-| POST | `/api/orders/{orderId}/return-request` | Owner | Request a return after delivery |
-| GET | `/api/orders/cancellation-requests` | Admin | Cancellation queue (paginated) |
-| POST | `/api/orders/cancellation-requests/{requestId}/approve` | Admin | Void payment, cancel, restore stock (`Idempotency-Key` supported) |
-| POST | `/api/orders/cancellation-requests/{requestId}/reject` | Admin | Reject the request |
-| GET | `/api/orders/return-requests` | Admin | Return queue (paginated) |
-| POST | `/api/orders/return-requests/{requestId}/accept` | Admin | Assign courier |
-| POST | `/api/orders/return-requests/{requestId}/receive` | Admin | Mark received/inspection |
-| POST | `/api/orders/return-requests/{requestId}/reject` | Admin | Reject the return |
-| POST | `/api/orders/return-requests/{requestId}/process-refund` | Admin | Refund with cap enforcement (`Idempotency-Key` supported) |
-| PUT | `/api/orders/{orderId}/erp-reference` | Integration | Record the ERP order and invoice identifiers |
-| DELETE | `/api/orders/{orderId}` | Owner / Admin | Delete an unpaid, inactive order |
-| DELETE | `/api/orders/{orderId}/items/{productId}` | Owner / Admin | Remove an item pre-shipment |
-
-### 7.5 Payments — `/api/payments`
+**Orders — `/api/v1/orders`** (class: `Auth`)
 
 | Method | Endpoint | Access | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/payments/session` | Auth (owner) | Create a Paymob intention and checkout URL (`Idempotency-Key` supported) |
-| POST | `/api/payments/callback` | Public | Paymob webhook (`?hmac=`), HMAC-verified, idempotent |
-| GET | `/api/payments/transactions` | Admin | Paginated transactions, optional `orderId` filter |
-| GET | `/api/payments/transactions/all` | Admin | Paginated transactions without an order filter |
-| POST | `/api/payments/refund` | Admin | Partial/full refund on a delivered order (`Idempotency-Key` supported) |
-| POST | `/api/payments/void` | Admin | Void within 24 hours of payment (`Idempotency-Key` supported) |
+| GET | `/api/v1/orders` | Auth | Current user's orders (paginated) |
+| GET | `/api/v1/orders/{orderId}/details` | Owner / Staff | Order details with `OrderItemId` |
+| PUT | `/api/v1/orders/{orderId}/status` | Admin | Validated status transition |
+| PUT | `/api/v1/orders/{orderId}/cancel` | Owner | Cancel an unpaid order |
+| POST | `/api/v1/orders/{orderId}/cancellation-request` | Owner | Request cancellation of a paid order |
+| POST | `/api/v1/orders/{orderId}/return-request` | Owner | Request a return after delivery |
+| GET | `/api/v1/orders/cancellation-requests` | Admin | Cancellation queue (paginated) |
+| POST | `/api/v1/orders/cancellation-requests/{requestId}/approve` | Admin | Void payment, cancel, restore stock (`Idempotency-Key` supported) |
+| POST | `/api/v1/orders/cancellation-requests/{requestId}/reject` | Admin | Reject the request |
+| GET | `/api/v1/orders/return-requests` | Admin | Return queue (paginated) |
+| POST | `/api/v1/orders/return-requests/{requestId}/accept` | Admin | Assign courier |
+| POST | `/api/v1/orders/return-requests/{requestId}/receive` | Admin | Mark received/inspection |
+| POST | `/api/v1/orders/return-requests/{requestId}/reject` | Admin | Reject the return |
+| POST | `/api/v1/orders/return-requests/{requestId}/process-refund` | Admin | Refund with cap enforcement (`Idempotency-Key` supported) |
+| PUT | `/api/v1/orders/{orderId}/erp-reference` | Integration | Record the ERP order and invoice identifiers |
+| DELETE | `/api/v1/orders/{orderId}` | Owner / Admin | Delete an unpaid, inactive order |
+| DELETE | `/api/v1/orders/{orderId}/items/{productId}` | Owner / Admin | Remove an item pre-shipment |
 
-### 7.6 Coupons — `/api/coupons`
-
-| Method | Endpoint | Access | Purpose |
-| --- | --- | --- | --- |
-| GET | `/api/coupons` | Admin | List coupons (paginated) |
-| GET | `/api/coupons/check/{couponCode}` | Auth | Validate a coupon and get its ratio |
-| GET | `/api/coupons/{couponId}` | Admin | Get a coupon for editing |
-| POST | `/api/coupons` | Admin | Create |
-| PUT | `/api/coupons/{couponId}` | Admin | Update |
-| DELETE | `/api/coupons/{couponId}` | Admin | Delete |
-
-### 7.7 Reviews — `/api/reviews`
-
-| Method | Endpoint | Access | Purpose |
-| --- | --- | --- | --- |
-| GET | `/api/reviews/product/{productId}` | Public | Paginated product reviews |
-| POST | `/api/reviews` | Auth | Add a review (one per product per customer) |
-| PUT | `/api/reviews/{reviewId}` | Owner | Edit a review |
-| DELETE | `/api/reviews/{reviewId}` | Owner | Delete a review |
-
-### 7.8 Support tickets — `/api/support-tickets`
+### 7.5 Payments — `/api/v1/payments`
 
 | Method | Endpoint | Access | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/support-tickets` | Auth | Current user's tickets (paginated) |
-| GET | `/api/support-tickets/all` | Staff | All tickets (paginated, filterable by status) |
-| GET | `/api/support-tickets/{ticketId}` | Owner / Staff | Ticket details |
-| POST | `/api/support-tickets` | Auth | Create a ticket |
-| PUT | `/api/support-tickets/{ticketId}/status` | Staff | Update status; closed tickets can only reopen with `Open` |
+| POST | `/api/v1/payments/session` | Auth (owner) | Create a Paymob intention and checkout URL (`Idempotency-Key` supported) |
+| POST | `/api/v1/payments/callback` | Public | Paymob webhook (`?hmac=`), HMAC-verified, idempotent |
+| GET | `/api/v1/payments/transactions` | Admin | Paginated transactions, optional `orderId` filter |
+| GET | `/api/v1/payments/transactions/all` | Admin | Paginated transactions without an order filter |
+| POST | `/api/v1/payments/refund` | Admin | Partial/full refund on a delivered order (`Idempotency-Key` supported) |
+| POST | `/api/v1/payments/void` | Admin | Void within 24 hours of payment (`Idempotency-Key` supported) |
 
-### 7.9 Support chat — `/api/support-tickets/{ticketId}/chat`
+### 7.6 Coupons — `/api/v1/coupons`
 
 | Method | Endpoint | Access | Purpose |
 | --- | --- | --- | --- |
-| GET | `/api/support-tickets/{ticketId}/chat` | Owner / Staff | Conversation metadata |
-| GET | `/api/support-tickets/{ticketId}/chat/messages` | Owner / Staff | Paginated messages (default 50) |
-| POST | `/api/support-tickets/{ticketId}/chat/read` | Owner / Staff | Mark messages read |
-| POST | `/api/support-tickets/{ticketId}/chat/close` | Staff | Close the conversation |
-| POST | `/api/support-tickets/{ticketId}/chat/reopen` | Staff | Reopen the conversation |
+| GET | `/api/v1/coupons` | Admin | List coupons (paginated) |
+| GET | `/api/v1/coupons/check/{couponCode}` | Auth | Validate a coupon and get its ratio |
+| GET | `/api/v1/coupons/{couponId}` | Admin | Get a coupon for editing |
+| POST | `/api/v1/coupons` | Admin | Create |
+| PUT | `/api/v1/coupons/{couponId}` | Admin | Update |
+| DELETE | `/api/v1/coupons/{couponId}` | Admin | Delete |
+
+### 7.7 Reviews — `/api/v1/reviews`
+
+| Method | Endpoint | Access | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/reviews/product/{productId}` | Public | Paginated product reviews |
+| POST | `/api/v1/reviews` | Auth | Add a review (one per product per customer) |
+| PUT | `/api/v1/reviews/{reviewId}` | Owner | Edit a review |
+| DELETE | `/api/v1/reviews/{reviewId}` | Owner | Delete a review |
+
+### 7.8 Support tickets — `/api/v1/support-tickets`
+
+| Method | Endpoint | Access | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/support-tickets` | Auth | Current user's tickets (paginated) |
+| GET | `/api/v1/support-tickets/all` | Staff | All tickets (paginated, filterable by status) |
+| GET | `/api/v1/support-tickets/{ticketId}` | Owner / Staff | Ticket details |
+| POST | `/api/v1/support-tickets` | Auth | Create a ticket |
+| PUT | `/api/v1/support-tickets/{ticketId}/status` | Staff | Update status; closed tickets can only reopen with `Open` |
+
+### 7.9 Support chat — `/api/v1/support-tickets/{ticketId}/chat`
+
+| Method | Endpoint | Access | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/v1/support-tickets/{ticketId}/chat` | Owner / Staff | Conversation metadata |
+| GET | `/api/v1/support-tickets/{ticketId}/chat/messages` | Owner / Staff | Paginated messages (default 50) |
+| POST | `/api/v1/support-tickets/{ticketId}/chat/read` | Owner / Staff | Mark messages read |
+| POST | `/api/v1/support-tickets/{ticketId}/chat/close` | Staff | Close the conversation |
+| POST | `/api/v1/support-tickets/{ticketId}/chat/reopen` | Staff | Reopen the conversation |
 
 Sending a message is done with `SupportHub.BroadcastMessageAsync` (SignalR), not HTTP.
 
-### 7.10 Notifications — `/api/notifications` (Admin)
+### 7.10 Notifications — `/api/v1/notifications` (Admin)
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| GET | `/api/notifications/admin` | Paginated notifications |
-| PATCH | `/api/notifications/{id}/read` | Mark one notification read (receiver only) |
+| GET | `/api/v1/notifications/admin` | Paginated notifications |
+| PATCH | `/api/v1/notifications/{id}/read` | Mark one notification read (receiver only) |
 
 ### 7.11 Administration
 
-**Users — `/api/users`** (Admin)
+**Users — `/api/v1/users`** (Admin)
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| GET | `/api/users` | Paginated users with optional `search` |
-| PUT | `/api/users/{userId}/status` | Activate/deactivate (cannot deactivate self) |
+| GET | `/api/v1/users` | Paginated users with optional `search` |
+| PUT | `/api/v1/users/{userId}/status` | Activate/deactivate (cannot deactivate self) |
 
-**Roles — `/api/roles`** (Admin)
-
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| GET | `/api/roles` | List roles |
-| POST | `/api/roles` | Create a role |
-| POST | `/api/roles/assign` | Assign a role to a user |
-| POST | `/api/roles/unassign` | Remove a role from a user |
-| DELETE | `/api/roles/{roleName}` | Delete a role (built-in or assigned roles are protected) |
-
-**Audit logs — `/api/audit-logs`** (Admin)
+**Roles — `/api/v1/roles`** (Admin)
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| GET | `/api/audit-logs` | Paginated audit entries, optional `entityName` filter |
+| GET | `/api/v1/roles` | List roles |
+| POST | `/api/v1/roles` | Create a role |
+| POST | `/api/v1/roles/assign` | Assign a role to a user |
+| POST | `/api/v1/roles/unassign` | Remove a role from a user |
+| DELETE | `/api/v1/roles/{roleName}` | Delete a role (built-in or assigned roles are protected) |
 
-**Contact — `/api/contact`** (Auth)
+**Audit logs — `/api/v1/audit-logs`** (Admin)
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| GET | `/api/contact` | Contact details |
-| POST | `/api/contact/send-email` | Send a contact email to the store |
+| GET | `/api/v1/audit-logs` | Paginated audit entries, optional `entityName` filter |
+
+**Contact — `/api/v1/contact`** (Auth)
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/api/v1/contact` | Contact details |
+| POST | `/api/v1/contact/send-email` | Send a contact email to the store |
 
 ### 7.12 Real-time hubs
 
@@ -607,14 +607,14 @@ Authenticate SignalR with `?access_token=<JWT>` (the API reads it only for `/hub
 
 ```bash
 # Login (refresh token arrives as an HttpOnly cookie)
-curl -X POST https://furniapi.runasp.net/api/auth/login \
+curl -X POST https://furniapi.runasp.net/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@furni.test","password":"Furni@2026"}'
 ```
 
 ```bash
 # Place an order idempotently
-curl -X POST https://furniapi.runasp.net/api/checkout/place-order \
+curl -X POST https://furniapi.runasp.net/api/v1/checkout/place-order \
   -H "Authorization: Bearer $TOKEN" \
   -H "Idempotency-Key: 8f14e45f-eaad-4b7e-9d1a-2f2b3c4d5e6f" \
   -H "Content-Type: application/json" \
@@ -623,7 +623,7 @@ curl -X POST https://furniapi.runasp.net/api/checkout/place-order \
 
 ```bash
 # Create a payment session, then open the returned checkoutUrl
-curl -X POST https://furniapi.runasp.net/api/payments/session \
+curl -X POST https://furniapi.runasp.net/api/v1/payments/session \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"orderId":"<order-guid>","idempotencyKey":"payment-<order-guid>"}'
@@ -631,7 +631,7 @@ curl -X POST https://furniapi.runasp.net/api/payments/session \
 
 ```bash
 # Admin: list every transaction, newest first
-curl "https://furniapi.runasp.net/api/payments/transactions/all?page=1&pageSize=20" \
+curl "https://furniapi.runasp.net/api/v1/payments/transactions/all?page=1&pageSize=20" \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
 
@@ -801,7 +801,7 @@ Checklist for a deployment:
 1. Provision SQL Server and apply the schema SQL, including the incremental scripts under `db/` (`db/ErpIntegrationReadiness_20261120.sql` for SKU, ERP references, outbox, and status history).
 2. Provide all configuration values through environment variables (or a `.env` file that is never committed). For ERP integration also set `Integration__ApiKeys` and `Integration__EventsEndpoint` on the host.
 3. Ensure Redis is reachable.
-4. Configure Paymob's `NotificationUrl` with the public `POST /api/payments/callback` URL and set the same `HmacSecret` used by Paymob.
+4. Configure Paymob's `NotificationUrl` with the public `POST /api/v1/payments/callback` URL and set the same `HmacSecret` used by Paymob.
 5. Configure Cloudinary (`CLOUDINARY_URL`) — the application fails fast at startup without it.
 6. Configure `Cors:AllowedOrigins` for the frontend origin(s).
 7. Publish `App.Api` and verify:

@@ -16,7 +16,6 @@ namespace App.Api.Controllers
     /// Handles support tickets for customers and support staff.
     /// </summary>
     [ApiController]
-    [Route("api/support-tickets")]
     [Route("api/v1/support-tickets")]
     [Authorize]
     public class SupportTicketsController : BaseController

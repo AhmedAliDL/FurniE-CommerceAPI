@@ -28,7 +28,6 @@ namespace App.Api.Controllers
     /// Handles order history, order details, item removal, status updates, and cancellation and return workflows.
     /// </summary>
     [ApiController]
-    [Route("api/orders")]
     [Route("api/v1/orders")]
     [Authorize]
     public class OrdersController : BaseController

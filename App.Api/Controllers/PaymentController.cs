@@ -16,7 +16,6 @@ namespace App.Api.Controllers
     /// Handles payment sessions, Paymob callbacks, transaction listing, refunds, and payment voids.
     /// </summary>
     [ApiController]
-    [Route("api/payments")]
     [Route("api/v1/payments")]
     [Authorize]
     public class PaymentController : BaseController

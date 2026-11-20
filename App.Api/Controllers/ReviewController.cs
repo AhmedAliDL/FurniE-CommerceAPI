@@ -14,7 +14,6 @@ namespace App.Api.Controllers
     /// Handles product reviews.
     /// </summary>
     [ApiController]
-    [Route("api/reviews")]
     [Route("api/v1/reviews")]
     [Authorize]
     public class ReviewController : BaseController

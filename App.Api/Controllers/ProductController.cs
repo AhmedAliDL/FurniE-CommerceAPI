@@ -22,7 +22,6 @@ namespace App.Api.Controllers
     /// Provides product catalog and product management endpoints.
     /// </summary>
     [ApiController]
-    [Route("api/products")]
     [Route("api/v1/products")]
     [Authorize]
     public class ProductController : BaseController

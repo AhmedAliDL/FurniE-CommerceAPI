@@ -13,7 +13,6 @@ namespace App.Api.Controllers
     /// Provides product category listing and management endpoints.
     /// </summary>
     [ApiController]
-    [Route("api/categories")]
     [Route("api/v1/categories")]
     [Authorize(Roles = "Admin")]
     public class CategoryController : BaseController
