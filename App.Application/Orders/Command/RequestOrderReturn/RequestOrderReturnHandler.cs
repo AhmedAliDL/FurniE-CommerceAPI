@@ -1,4 +1,5 @@
 using App.Application.Common.Exceptions;
+using App.Application.Common.Integration;
 using App.Application.Common.Interfaces.Services;
 using App.Application.Common.Interfaces.UnitOfWork;
 using App.Application.Responses;
@@ -76,6 +77,19 @@ namespace App.Application.Orders.Command.RequestOrderReturn
             returnRequest.ReturnItems = returnItems;
 
             await unitOfWork.ReturnRequests.AddAsync(returnRequest, cancellationToken);
+
+            await IntegrationEvents.PublishAsync(unitOfWork, IntegrationEvents.ReturnRequested, new
+            {
+                returnRequestId = returnRequest.Id,
+                orderId = order.OrderId,
+                customerId = userId,
+                reasonCategory = returnRequest.ReasonCategory.ToString(),
+                items = returnItems.Select(ri => new
+                {
+                    orderItemId = ri.OrderItemId,
+                    quantity = ri.Quantity
+                })
+            }, cancellationToken);
 
             await unitOfWork.CompleteAsync(cancellationToken);
 

@@ -14,7 +14,7 @@ namespace App.Application.Coupons.Command.CreateCoupon
             {
                 CouponCode = request.CouponCode,
                 CouponRatio = request.CouponRatio,
-                ExpireDate = DateTime.Now
+                ExpireDate = DateTime.UtcNow
                     .AddDays(request.PeriodInDays)
                     .AddHours(request.PeriodInHours)
                     .AddMinutes(request.PeriodInMinutes)

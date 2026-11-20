@@ -40,10 +40,15 @@ namespace App.Application.Orders.Queries.GetOrderDetails
                     OrderItemId = orderItem.OrderItemId,
                     ProductId = orderItem.ProductId,
                     ProductName = productName,
+                    ProductSku = string.IsNullOrWhiteSpace(orderItem.ProductSkuSnapshot)
+                        ? orderItem.Product?.Sku ?? string.Empty
+                        : orderItem.ProductSkuSnapshot,
                     ProductImage = orderItem.Product?.ImageUrl ?? string.Empty,
                     ProductPrice = orderItem.UnitPrice,
                     ProductQuantity = orderItem.Quantity,
                     ShippingStatus = order.OrderStatus.ToString(),
+                    ErpOrderId = order.ErpOrderId,
+                    ErpInvoiceId = order.ErpInvoiceId,
                     IsReviewed = isReviewed
                 });
             }

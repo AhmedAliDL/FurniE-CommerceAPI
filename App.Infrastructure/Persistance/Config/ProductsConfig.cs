@@ -11,6 +11,7 @@ namespace App.Infrastructure.Persistance.Config
             builder.HasKey(p => p.ProductId);
             builder.Property(p => p.ProductId).ValueGeneratedOnAdd();
 
+            builder.Property(p => p.Sku).HasColumnType("nvarchar(64)");
             builder.Property(p => p.ProductName).HasColumnType("nvarchar(50)");
             builder.Property(p => p.Description).HasColumnType("text");
             builder.Property(p => p.Price).HasColumnType("decimal(18,2)");
@@ -18,6 +19,9 @@ namespace App.Infrastructure.Persistance.Config
             builder.Property(p => p.ImageUrl).HasColumnType("nvarchar(1000)");
             builder.Property(p => p.CreatedAt).HasColumnType("datetime");
             builder.Property(p => p.IsActive).HasColumnType("bit");
+
+            // SKU is the ERP's business key; legacy products keep '' and are excluded from uniqueness.
+            builder.HasIndex(p => p.Sku).IsUnique().HasFilter("[Sku] <> ''");
 
             builder.HasOne(p => p.Category)
                 .WithMany(c => c.Products)

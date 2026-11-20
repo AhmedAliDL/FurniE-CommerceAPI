@@ -16,6 +16,7 @@ using App.Application.Orders.Command.RejectCancellationRequest;
 using App.Application.Orders.Command.RejectReturnRequest;
 using App.Application.Orders.Command.RequestOrderCancellation;
 using App.Application.Orders.Command.RequestOrderReturn;
+using App.Application.Orders.Command.SetOrderErpReference;
 using App.Application.Orders.Command.UpdateOrderStatus;
 using App.Application.Orders.Dto;
 using App.Application.Orders.Queries.GetCancellationRequests;
@@ -46,6 +47,7 @@ namespace App.Test.Handlers
         private Mock<IBaseRepository<CancellationRequest>> _cancellationRequests = null!;
         private Mock<IBaseRepository<ReturnRequest>> _returnRequests = null!;
         private Mock<IBaseRepository<Review>> _reviews = null!;
+        private Mock<IBaseRepository<IntegrationOutboxMessage>> _integrationOutbox = null!;
         private Mock<ICurrentUserService> _currentUserService = null!;
         private Mock<IIdentityService> _identityService = null!;
         private Mock<INotificationService> _notificationService = null!;
@@ -68,6 +70,7 @@ namespace App.Test.Handlers
         private RejectReturnRequestHandler _rejectReturnRequestHandler = null!;
         private ProcessReturnRefundHandler _processReturnRefundHandler = null!;
         private GetReturnRequestsHandler _getReturnRequestsHandler = null!;
+        private SetOrderErpReferenceHandler _setErpReferenceHandler = null!;
 
         private readonly Guid _userId = Guid.NewGuid();
 
@@ -83,6 +86,7 @@ namespace App.Test.Handlers
             _cancellationRequests = new Mock<IBaseRepository<CancellationRequest>>();
             _returnRequests = new Mock<IBaseRepository<ReturnRequest>>();
             _reviews = new Mock<IBaseRepository<Review>>();
+            _integrationOutbox = new Mock<IBaseRepository<IntegrationOutboxMessage>>();
             _currentUserService = new Mock<ICurrentUserService>();
             _identityService = new Mock<IIdentityService>();
             _notificationService = new Mock<INotificationService>();
@@ -97,6 +101,7 @@ namespace App.Test.Handlers
             _unitOfWork.Setup(u => u.CancellationRequests).Returns(_cancellationRequests.Object);
             _unitOfWork.Setup(u => u.ReturnRequests).Returns(_returnRequests.Object);
             _unitOfWork.Setup(u => u.Reviews).Returns(_reviews.Object);
+            _unitOfWork.Setup(u => u.IntegrationOutbox).Returns(_integrationOutbox.Object);
 
             _currentUserService.SetupGet(c => c.UserId).Returns(_userId);
             _notificationService.Setup(n => n.NotifyUserAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -118,6 +123,7 @@ namespace App.Test.Handlers
             _rejectReturnRequestHandler = new RejectReturnRequestHandler(_unitOfWork.Object, _currentUserService.Object, _notificationService.Object, new Mock<ILogger<RejectReturnRequestHandler>>().Object);
             _processReturnRefundHandler = new ProcessReturnRefundHandler(_unitOfWork.Object, _currentUserService.Object, _sender.Object, _notificationService.Object, new Mock<ILogger<ProcessReturnRefundHandler>>().Object);
             _getReturnRequestsHandler = new GetReturnRequestsHandler(_unitOfWork.Object, new Mock<ILogger<GetReturnRequestsHandler>>().Object);
+            _setErpReferenceHandler = new SetOrderErpReferenceHandler(_unitOfWork.Object, new Mock<ILogger<SetOrderErpReferenceHandler>>().Object);
         }
 
         private Order ValidOrder(OrderStatus status = OrderStatus.Processing) => new()
@@ -1505,6 +1511,50 @@ namespace App.Test.Handlers
                 Assert.That(result.Value.Items[0].Items[0].ProductName, Is.EqualTo("Sofa"));
                 Assert.That(result.Value.Items[0].Items[0].Quantity, Is.EqualTo(2));
             });
+        }
+
+        #endregion
+
+        #region SetOrderErpReference
+
+        [Test]
+        public async Task EnsureSetOrderErpReferenceHandlerStoresTrimmedReferences()
+        {
+            var order = ValidOrder();
+            _orders.Setup(o => o.FindAsync(
+                    It.IsAny<Expression<Func<Order, bool>>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(order);
+            _unitOfWork.Setup(u => u.CompleteAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+            var result = await _setErpReferenceHandler.Handle(
+                new SetOrderErpReferenceCommand { OrderId = order.OrderId, ErpOrderId = " ERP-1 ", ErpInvoiceId = " INV-1 " },
+                It.IsAny<CancellationToken>());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(order.ErpOrderId, Is.EqualTo("ERP-1"));
+                Assert.That(order.ErpInvoiceId, Is.EqualTo("INV-1"));
+            });
+            _orders.Verify(o => o.Update(order), Times.Once);
+            _unitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Test]
+        public async Task EnsureSetOrderErpReferenceHandlerReturnsFalseWhenOrderMissing()
+        {
+            _orders.Setup(o => o.FindAsync(
+                    It.IsAny<Expression<Func<Order, bool>>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Order?)null);
+
+            var result = await _setErpReferenceHandler.Handle(
+                new SetOrderErpReferenceCommand { OrderId = Guid.NewGuid(), ErpOrderId = "ERP-1" },
+                It.IsAny<CancellationToken>());
+
+            Assert.That(result, Is.False);
+            _unitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
         #endregion

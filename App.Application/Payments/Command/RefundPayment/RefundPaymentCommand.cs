@@ -10,5 +10,8 @@ namespace App.Application.Payments.Command.RefundPayment
         public Guid OrderId { get; init; }
 
         public long? AmountCents { get; init; }
+
+        // Optional: repeating the same key returns the original result instead of refunding again.
+        public string? IdempotencyKey { get; set; }
     }
 }

@@ -9,6 +9,10 @@ namespace App.Application.Products.Command.UpdateProduct
             RuleFor(p => p.ProductId)
                 .NotEmpty()
                 .WithMessage("Product id is required.");
+            RuleFor(p => p.Sku)
+                .MaximumLength(64)
+                .When(p => p.Sku is not null)
+                .WithMessage("SKU must not exceed 64 characters.");
             RuleFor(p => p.ProductName)
                 .MaximumLength(50)
                 .When(p => p.ProductName is not null)

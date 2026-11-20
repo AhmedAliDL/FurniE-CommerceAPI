@@ -9,6 +9,7 @@ using App.Application.Orders.Command.RejectCancellationRequest;
 using App.Application.Orders.Command.RejectReturnRequest;
 using App.Application.Orders.Command.RequestOrderCancellation;
 using App.Application.Orders.Command.RequestOrderReturn;
+using App.Application.Orders.Command.SetOrderErpReference;
 using App.Application.Orders.Command.UpdateOrderStatus;
 using App.Application.Orders.Dto;
 using App.Application.Orders.Queries.GetCancellationRequests;
@@ -28,6 +29,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/orders")]
+    [Route("api/v1/orders")]
     [Authorize]
     public class OrdersController : BaseController
     {
@@ -179,6 +181,7 @@ namespace App.Api.Controllers
         /// Approves a cancellation request: voids the Paymob payment, cancels the order and restores stock. Admin only.
         /// </summary>
         /// <param name="requestId">The cancellation request identifier.</param>
+        /// <param name="idempotencyKey">Optional idempotency key sent as the Idempotency-Key header; repeating it returns the original outcome without voiding twice.</param>
         /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
         /// <returns>No content when approved.</returns>
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -187,9 +190,10 @@ namespace App.Api.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [Authorize(Roles = "Admin")]
         [HttpPost("cancellation-requests/{requestId:guid}/approve")]
-        public async Task<IActionResult> ApproveCancellationRequest(Guid requestId, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> ApproveCancellationRequest(Guid requestId, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null, CancellationToken cancellationToken = default)
         {
-            var result = await _sender.Send(new ApproveCancellationRequestCommand(requestId), cancellationToken);
+            var command = new ApproveCancellationRequestCommand(requestId) { IdempotencyKey = idempotencyKey };
+            var result = await _sender.Send(command, cancellationToken);
             return result.IsSuccess ? NoContent() : BadRequest(result.Errors);
         }
 
@@ -301,6 +305,7 @@ namespace App.Api.Controllers
         /// </summary>
         /// <param name="requestId">The return request identifier.</param>
         /// <param name="command">Optional partial amount in cents; omit to refund the full refundable amount (returned items, plus shipping for merchant-defect returns).</param>
+        /// <param name="idempotencyKey">Optional idempotency key sent as the Idempotency-Key header; repeating it returns the original outcome without refunding twice.</param>
         /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
         /// <returns>No content when the refund is processed.</returns>
         [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -309,13 +314,39 @@ namespace App.Api.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [Authorize(Roles = "Admin")]
         [HttpPost("return-requests/{requestId:guid}/process-refund")]
-        public async Task<IActionResult> ProcessReturnRefund(Guid requestId, [FromBody] ProcessReturnRefundCommand command, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> ProcessReturnRefund(Guid requestId, [FromBody] ProcessReturnRefundCommand command, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null, CancellationToken cancellationToken = default)
         {
             if (requestId != command.RequestId)
                 return BadRequest("The route request id must match the request id.");
 
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+                command.IdempotencyKey = idempotencyKey;
+
             var result = await _sender.Send(command, cancellationToken);
             return result.IsSuccess ? NoContent() : BadRequest(result.Errors);
+        }
+
+        /// <summary>
+        /// Records the ERP's order and invoice identifiers on an order. Integration (ERP) only.
+        /// </summary>
+        /// <param name="orderId">The order identifier.</param>
+        /// <param name="command">The ERP order and invoice identifiers. Omitted identifiers are left unchanged.</param>
+        /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+        /// <returns>No content when updated, or not found when the order does not exist.</returns>
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize(Policy = "Integration")]
+        [HttpPut("{orderId:guid}/erp-reference")]
+        public async Task<IActionResult> SetErpReference(Guid orderId, [FromBody] SetOrderErpReferenceCommand command, CancellationToken cancellationToken = default)
+        {
+            if (orderId != command.OrderId)
+                return BadRequest("The route order id must match the request order id.");
+
+            var result = await _sender.Send(command, cancellationToken);
+            return result ? NoContent() : NotFound();
         }
 
         /// <summary>

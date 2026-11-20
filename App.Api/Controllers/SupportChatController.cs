@@ -16,6 +16,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/support-tickets/{ticketId:guid}/chat")]
+    [Route("api/v1/support-tickets/{ticketId:guid}/chat")]
     [Authorize]
     public class SupportChatController : BaseController
     {

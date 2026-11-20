@@ -39,11 +39,13 @@ namespace App.Infrastructure
             services.AddScoped<IJobs, CartExpirationBackgroundJob>();
             services.AddScoped<IJobs, OrderReviewReminderBackgroundJob>();
             services.AddScoped<IJobs, ScheduledOrderReminderBackgroundJob>();
+            services.AddScoped<IJobs, IntegrationOutboxBackgroundJob>();
             services.AddScoped<IPriceDropDetectionBackgroundJob, PriceDropDetectionBackgroundJob>();
             // Hangfire activates jobs by resolving their concrete type from DI.
             services.AddScoped<CartExpirationBackgroundJob>();
             services.AddScoped<OrderReviewReminderBackgroundJob>();
             services.AddScoped<ScheduledOrderReminderBackgroundJob>();
+            services.AddScoped<IntegrationOutboxBackgroundJob>();
             services.AddScoped<PriceDropDetectionBackgroundJob>();
             services.AddScoped<SoftDeleteInterceptor>();
             services.AddScoped<AuditInterceptor>();

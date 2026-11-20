@@ -12,11 +12,13 @@ namespace App.Infrastructure.Persistance.Config
             builder.Property(r => r.Id).ValueGeneratedOnAdd();
 
             builder.Property(r => r.IdempotencyKey).IsRequired().HasMaxLength(100);
+            builder.Property(r => r.Operation).IsRequired().HasMaxLength(64);
             builder.Property(r => r.ResponsePayload).HasColumnType("nvarchar(max)");
             builder.Property(r => r.CreatedAt).HasColumnType("datetime2");
             builder.Property(r => r.UpdatedAt).HasColumnType("datetime2");
 
-            builder.HasIndex(r => new { r.UserId, r.IdempotencyKey }).IsUnique();
+            // Same key may be reused across operations (checkout, refund, void...).
+            builder.HasIndex(r => new { r.UserId, r.Operation, r.IdempotencyKey }).IsUnique();
 
             // Optional so the record stays queryable for replay after its order is soft-deleted; Cascade kept explicitly since convention would downgrade it.
             builder.HasOne(r => r.Order)

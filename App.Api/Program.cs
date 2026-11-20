@@ -1,3 +1,4 @@
+using App.Api.Health;
 using App.Api.Middleware;
 using App.Application;
 using App.Application.Common.Interfaces.Services;
@@ -10,6 +11,7 @@ using App.Infrastructure.Persistance.Seed;
 using dotenv.net;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -78,6 +80,43 @@ builder.Services.AddIdentity<AppUser, IdentityRole<Guid>>()
 
 builder.Services.AddHttpContextAccessor();
 
+// The external ERP calls this API with a hand-issued JWT carrying the integration role
+// and must also present one of the configured API keys in X-Integration-Api-Key.
+builder.Services.AddAuthorization(options =>
+{
+    var integrationRole = builder.Configuration["Integration:RoleName"] ?? "IntegrationClient";
+
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+
+    options.AddPolicy("Integration", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireRole(integrationRole)
+        .RequireAssertion(context => HasValidIntegrationKey(context, builder.Configuration)));
+
+    // Endpoints the ERP and admins share (e.g. stock levels).
+    options.AddPolicy("IntegrationOrAdmin", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireAssertion(context =>
+            context.User.IsInRole("Admin")
+            || (context.User.IsInRole(integrationRole) && HasValidIntegrationKey(context, builder.Configuration))));
+});
+
+static bool HasValidIntegrationKey(AuthorizationHandlerContext context, IConfiguration configuration)
+{
+    var configuredKeys = (configuration["Integration:ApiKeys"] ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    if (configuredKeys.Length == 0)
+        return false;
+
+    var providedKey = context.Resource is HttpContext httpContext
+        ? httpContext.Request.Headers["X-Integration-Api-Key"].ToString()
+        : null;
+
+    return !string.IsNullOrWhiteSpace(providedKey) && configuredKeys.Contains(providedKey);
+}
+
 // Authentication
 builder.Services
     .AddAuthentication(options =>
@@ -131,6 +170,9 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
     {
+        if (httpContext.Request.Path.StartsWithSegments("/health"))
+            return RateLimitPartition.GetNoLimiter("health");
+
         var userId = httpContext.User?.Identity?.Name ?? "anonymous";
         return RateLimitPartition.GetFixedWindowLimiter(userId, _ => new FixedWindowRateLimiterOptions
         {
@@ -178,6 +220,7 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     Authorization = [new HangfireDashboardAuthorizationFilter()]
 });
 app.MapControllers();
+app.MapGet("/health", HealthEndpoint.HandleAsync).AllowAnonymous();
 
 app.MapHub<NotificationHub>("/hubs/notification");
 app.MapHub<SupportHub>("/hubs/support");

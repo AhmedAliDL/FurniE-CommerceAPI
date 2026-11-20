@@ -13,6 +13,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/checkout")]
+    [Route("api/v1/checkout")]
     [Authorize]
     public class CheckoutController : BaseController
     {

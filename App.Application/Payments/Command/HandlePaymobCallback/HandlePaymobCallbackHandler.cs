@@ -1,4 +1,5 @@
 using System.Text.Json;
+using App.Application.Common.Integration;
 using App.Application.Common.Interfaces.Services;
 using App.Application.Common.Interfaces.UnitOfWork;
 using App.Application.Payments.Dto.Paymob;
@@ -94,6 +95,20 @@ namespace App.Application.Payments.Command.HandlePaymobCallback
                 logger.LogWarning(
                     "Paymob callback could not be matched to an order. TransactionId {TransactionId}",
                     transaction.Id);
+            }
+
+            if (orderId != null)
+            {
+                await IntegrationEvents.PublishAsync(unitOfWork,
+                    transaction.Success ? IntegrationEvents.PaymentSucceeded : IntegrationEvents.PaymentFailed,
+                    new
+                    {
+                        orderId,
+                        transactionId = transaction.Id,
+                        amount = transaction.AmountCents / 100m,
+                        status = paymentTransaction.Status
+                    },
+                    cancellationToken);
             }
 
             await unitOfWork.CompleteAsync(cancellationToken);

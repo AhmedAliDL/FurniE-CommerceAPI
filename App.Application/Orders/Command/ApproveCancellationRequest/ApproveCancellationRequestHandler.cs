@@ -1,7 +1,10 @@
 using App.Application.Common.Exceptions;
+using App.Application.Common.Idempotency;
+using App.Application.Common.Integration;
 using App.Application.Common.Interfaces.Services;
 using App.Application.Common.Interfaces.UnitOfWork;
 using App.Application.Responses;
+using App.Domain.Entities;
 using App.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -15,6 +18,19 @@ namespace App.Application.Orders.Command.ApproveCancellationRequest
             logger.LogInformation("Cancellation request approval started. RequestId: {RequestId}", request.RequestId);
 
             Guid adminId = currentUserService.UserId ?? throw new NotFoundException("User not found.");
+
+            // A retried approval returns the original outcome instead of failing the Pending-state guard.
+            if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
+            {
+                var processed = await unitOfWork.IdempotencyRecords.FindAsync(
+                    r => r.UserId == adminId && r.Operation == IdempotencyOperations.ApproveCancellationRequest && r.IdempotencyKey == request.IdempotencyKey,
+                    cancellationToken);
+                if (processed != null)
+                {
+                    logger.LogInformation("Duplicate cancellation approval for idempotency key {IdempotencyKey}. Returning stored outcome.", request.IdempotencyKey);
+                    return ResponseResult.Success();
+                }
+            }
 
             var cancellationRequest = await unitOfWork.CancellationRequests.FindAsync(
                 r => r.Id == request.RequestId,
@@ -41,6 +57,13 @@ namespace App.Application.Orders.Command.ApproveCancellationRequest
             transaction.Status = "Voided";
             transaction.UpdatedAt = DateTime.UtcNow;
             unitOfWork.PaymentTransactions.Update(transaction);
+
+            await IntegrationEvents.PublishAsync(unitOfWork, IntegrationEvents.Voided, new
+            {
+                orderId = cancellationRequest.OrderId,
+                transactionId = transaction.PaymobTransactionId,
+                status = transaction.Status
+            }, cancellationToken);
 
             var payment = await unitOfWork.Payments.FindAsync(p => p.OrderId == cancellationRequest.OrderId, cancellationToken);
             if (payment != null)
@@ -69,6 +92,17 @@ namespace App.Application.Orders.Command.ApproveCancellationRequest
                     orderItem.Product.IsActive = true;
 
                 unitOfWork.Products.Update(orderItem.Product);
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
+            {
+                await unitOfWork.IdempotencyRecords.AddAsync(new IdempotencyRecord
+                {
+                    UserId = adminId,
+                    Operation = IdempotencyOperations.ApproveCancellationRequest,
+                    IdempotencyKey = request.IdempotencyKey,
+                    OrderId = order.OrderId
+                }, cancellationToken);
             }
 
             await unitOfWork.CompleteAsync(cancellationToken);

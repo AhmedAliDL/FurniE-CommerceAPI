@@ -14,6 +14,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/categories")]
+    [Route("api/v1/categories")]
     [Authorize(Roles = "Admin")]
     public class CategoryController : BaseController
     {

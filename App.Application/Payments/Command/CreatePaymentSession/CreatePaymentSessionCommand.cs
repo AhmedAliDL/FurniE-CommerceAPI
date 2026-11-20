@@ -9,6 +9,6 @@ namespace App.Application.Payments.Command.CreatePaymentSession
         public Guid OrderId { get; init; }
 
         // Optional: same key + same order replays the previously created session instead of creating a new Paymob intention.
-        public string? IdempotencyKey { get; init; }
+        public string? IdempotencyKey { get; set; }
     }
 }

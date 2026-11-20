@@ -18,8 +18,8 @@ namespace App.Application.Coupons.Queries.CheckCoupon
             if (foundCoupon == null)
                 return ResponseResult<decimal>.Failure("Coupon not found");
 
-            // ExpireDate is written from DateTime.Now by the coupon commands, so compare on the same clock.
-            if (foundCoupon.ExpireDate < DateTime.Now)
+            // ExpireDate is written from DateTime.UtcNow by the coupon commands, so compare on the same clock.
+            if (foundCoupon.ExpireDate < DateTime.UtcNow)
                 return ResponseResult<decimal>.Failure("Coupon has expired");
 
             logger.LogInformation("Check coupon operation completed.");

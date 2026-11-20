@@ -15,7 +15,7 @@ namespace App.Application.Coupons.Queries.GetCouponForEdit
             var coupon = await unitOfWork.Coupons.FindAsync(c => c.CouponId == request.CouponId, cancellationToken)
                 ?? throw new NotFoundException($"Coupon with id {request.CouponId} was not found.");
 
-            TimeSpan period = coupon.ExpireDate - DateTime.Now;
+            TimeSpan period = coupon.ExpireDate - DateTime.UtcNow;
 
             logger.LogInformation("Get coupon {CouponId} for edit operation completed.", request.CouponId);
             return new EditCouponDto

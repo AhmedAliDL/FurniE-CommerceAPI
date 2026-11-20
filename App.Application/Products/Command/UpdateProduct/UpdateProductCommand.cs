@@ -5,6 +5,7 @@ namespace App.Application.Products.Command.UpdateProduct
     public record UpdateProductCommand : IRequest<bool>
     {
         public Guid ProductId { get; set; }
+        public string? Sku { get; set; }
         public string? ProductName { get; set; }
         public string? Description { get; set; }
         public decimal? Price { get; set; }

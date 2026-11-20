@@ -494,7 +494,7 @@ namespace App.Infrastructure.Persistance.Seed
             {
                 Order = order,
                 PaymentMethod = paymentMethod,
-                Amount = (double)order.TotalPrice,
+                Amount = order.TotalPrice,
                 PaymentStatus = paymentStatus
             };
             context.Payments.Add(payment);

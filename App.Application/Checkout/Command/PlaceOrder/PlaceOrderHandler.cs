@@ -1,4 +1,6 @@
 using App.Application.Common.Exceptions;
+using App.Application.Common.Idempotency;
+using App.Application.Common.Integration;
 using App.Application.Common.Interfaces.Services;
 using App.Application.Common.Interfaces.UnitOfWork;
 using App.Application.Responses;
@@ -19,7 +21,8 @@ namespace App.Application.Checkout.Command.PlaceOrder
 
             if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
             {
-                var processed = await unitOfWork.IdempotencyRecords.FindAsync(r => r.UserId == userId && r.IdempotencyKey == request.IdempotencyKey, cancellationToken);
+                // Rows written before the Operation column existed carry an empty value.
+                var processed = await unitOfWork.IdempotencyRecords.FindAsync(r => r.UserId == userId && (r.Operation == IdempotencyOperations.Checkout || r.Operation == string.Empty) && r.IdempotencyKey == request.IdempotencyKey, cancellationToken);
                 if (processed != null)
                 {
                     logger.LogInformation("Duplicate checkout request for idempotency key {IdempotencyKey}. Returning existing order {OrderId}.", request.IdempotencyKey, processed.OrderId);
@@ -46,7 +49,7 @@ namespace App.Application.Checkout.Command.PlaceOrder
                 if (coupon == null)
                     return ResponseResult<Guid>.Failure("Coupon not found.");
 
-                if (coupon.ExpireDate < DateTime.Now)
+                if (coupon.ExpireDate < DateTime.UtcNow)
                     return ResponseResult<Guid>.Failure("Coupon has expired.");
 
                 discountPercent = coupon.CouponRatio;
@@ -66,6 +69,7 @@ namespace App.Application.Checkout.Command.PlaceOrder
                 orderItems.Add(new OrderItem
                 {
                     ProductId = cartItem.ProductId,
+                    ProductSkuSnapshot = cartItem.Product.Sku,
                     ProductNameSnapshot = cartItem.Product.ProductName,
                     Quantity = cartItem.ItemQuantity,
                     UnitPrice = unitPrice
@@ -115,16 +119,33 @@ namespace App.Application.Checkout.Command.PlaceOrder
             {
                 OrderId = order.OrderId,
                 PaymentMethod = request.PaymentMethod,
-                Amount = (double)(itemsSubtotal + shippingFee),
+                Amount = itemsSubtotal + shippingFee,
                 PaymentStatus = CalculatePaymentStatus(orderItems.Count)
             };
             await unitOfWork.Payments.AddAsync(payment, cancellationToken);
+
+            await IntegrationEvents.PublishAsync(unitOfWork, IntegrationEvents.OrderPlaced, new
+            {
+                orderId = order.OrderId,
+                userId,
+                totalPrice = order.TotalPrice,
+                shippingFee,
+                paymentMethod = request.PaymentMethod,
+                items = orderItems.Select(oi => new
+                {
+                    productId = oi.ProductId,
+                    sku = oi.ProductSkuSnapshot,
+                    quantity = oi.Quantity,
+                    unitPrice = oi.UnitPrice
+                })
+            }, cancellationToken);
 
             if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
             {
                 await unitOfWork.IdempotencyRecords.AddAsync(new IdempotencyRecord
                 {
                     UserId = userId,
+                    Operation = IdempotencyOperations.Checkout,
                     IdempotencyKey = request.IdempotencyKey,
                     OrderId = order.OrderId
                 }, cancellationToken);
@@ -140,7 +161,7 @@ namespace App.Application.Checkout.Command.PlaceOrder
             }
             catch (DbUpdateException) when (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
             {
-                var processed = await unitOfWork.IdempotencyRecords.FindAsync(r => r.UserId == userId && r.IdempotencyKey == request.IdempotencyKey, cancellationToken);
+                var processed = await unitOfWork.IdempotencyRecords.FindAsync(r => r.UserId == userId && (r.Operation == IdempotencyOperations.Checkout || r.Operation == string.Empty) && r.IdempotencyKey == request.IdempotencyKey, cancellationToken);
                 if (processed != null)
                 {
                     logger.LogInformation("Concurrent duplicate checkout detected for idempotency key {IdempotencyKey}. Returning existing order {OrderId}.", request.IdempotencyKey, processed.OrderId);

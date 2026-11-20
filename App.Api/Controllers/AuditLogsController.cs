@@ -12,6 +12,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/audit-logs")]
+    [Route("api/v1/audit-logs")]
     [Authorize(Roles = "Admin")]
     public class AuditLogsController : BaseController
     {

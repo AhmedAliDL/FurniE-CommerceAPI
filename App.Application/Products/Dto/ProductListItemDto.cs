@@ -3,6 +3,7 @@ namespace App.Application.Products.Dto
     public sealed class ProductListItemDto
     {
         public Guid ProductId { get; init; }
+        public string Sku { get; init; } = string.Empty;
         public string ProductName { get; init; } = string.Empty;
         public string Description { get; init; } = string.Empty;
         public decimal Price { get; init; }

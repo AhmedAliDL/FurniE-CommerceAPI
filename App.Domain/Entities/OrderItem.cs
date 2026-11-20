@@ -2,11 +2,12 @@ using App.Domain.Interceptors;
 
 namespace App.Domain.Entities
 {
-    public class OrderItem : ISoftDeletable
+    public class OrderItem : ISoftDeletable, IAuditLog
     {
         public Guid OrderItemId { get; set; }
         public Guid OrderId { get; set; }
         public Guid ProductId { get; set; }
+        public string ProductSkuSnapshot { get; set; } = string.Empty;
         public string ProductNameSnapshot { get; set; } = string.Empty;
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }

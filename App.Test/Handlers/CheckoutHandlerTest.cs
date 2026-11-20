@@ -27,6 +27,7 @@ namespace App.Test.Handlers
         private Mock<IBaseRepository<IdempotencyRecord>> _idempotencyRecords = null!;
         private Mock<IBaseRepository<Coupon>> _coupons = null!;
         private Mock<IBaseRepository<Product>> _products = null!;
+        private Mock<IBaseRepository<IntegrationOutboxMessage>> _integrationOutbox = null!;
         private Mock<ICurrentUserService> _currentUserService = null!;
         private Mock<IIdentityService> _identityService = null!;
         private Mock<IShippingRateService> _shippingRateService = null!;
@@ -48,6 +49,7 @@ namespace App.Test.Handlers
             _idempotencyRecords = new Mock<IBaseRepository<IdempotencyRecord>>();
             _coupons = new Mock<IBaseRepository<Coupon>>();
             _products = new Mock<IBaseRepository<Product>>();
+            _integrationOutbox = new Mock<IBaseRepository<IntegrationOutboxMessage>>();
             _currentUserService = new Mock<ICurrentUserService>();
             _identityService = new Mock<IIdentityService>();
             _shippingRateService = new Mock<IShippingRateService>();
@@ -60,6 +62,7 @@ namespace App.Test.Handlers
             _unitOfWork.Setup(u => u.IdempotencyRecords).Returns(_idempotencyRecords.Object);
             _unitOfWork.Setup(u => u.Coupons).Returns(_coupons.Object);
             _unitOfWork.Setup(u => u.Products).Returns(_products.Object);
+            _unitOfWork.Setup(u => u.IntegrationOutbox).Returns(_integrationOutbox.Object);
 
             _currentUserService.SetupGet(c => c.UserId).Returns(_userId);
 
@@ -174,7 +177,7 @@ namespace App.Test.Handlers
                 ord.ShippingAddress == "12 Tahrir Square"), It.IsAny<CancellationToken>()), Times.Once);
             _orderItems.Verify(oi => oi.AddRangeAsync(It.Is<List<OrderItem>>(items => items.Count == 1 && items[0].UnitPrice == 150m && items[0].Quantity == 2), It.IsAny<CancellationToken>()), Times.Once);
             _payments.Verify(p => p.AddAsync(It.Is<Payment>(pay =>
-                pay.Amount == 350d &&
+                pay.Amount == 350m &&
                 pay.PaymentMethod == "Cash" &&
                 pay.PaymentStatus == "Pending"), It.IsAny<CancellationToken>()), Times.Once);
             _idempotencyRecords.Verify(r => r.AddAsync(It.Is<IdempotencyRecord>(rec => rec.IdempotencyKey == "key-1" && rec.UserId == _userId), It.IsAny<CancellationToken>()), Times.Once);

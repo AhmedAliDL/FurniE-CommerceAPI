@@ -32,6 +32,7 @@ namespace App.Test.Handlers
         private Mock<IBaseRepository<Payment>> _payments = null!;
         private Mock<IBaseRepository<PaymentTransaction>> _paymentTransactions = null!;
         private Mock<IBaseRepository<IdempotencyRecord>> _idempotencyRecords = null!;
+        private Mock<IBaseRepository<IntegrationOutboxMessage>> _integrationOutbox = null!;
         private Mock<ICurrentUserService> _currentUserService = null!;
         private Mock<IPaymobService> _paymobService = null!;
 
@@ -52,6 +53,7 @@ namespace App.Test.Handlers
             _payments = new Mock<IBaseRepository<Payment>>();
             _paymentTransactions = new Mock<IBaseRepository<PaymentTransaction>>();
             _idempotencyRecords = new Mock<IBaseRepository<IdempotencyRecord>>();
+            _integrationOutbox = new Mock<IBaseRepository<IntegrationOutboxMessage>>();
             _currentUserService = new Mock<ICurrentUserService>();
             _paymobService = new Mock<IPaymobService>();
 
@@ -60,6 +62,7 @@ namespace App.Test.Handlers
             _unitOfWork.Setup(u => u.Payments).Returns(_payments.Object);
             _unitOfWork.Setup(u => u.PaymentTransactions).Returns(_paymentTransactions.Object);
             _unitOfWork.Setup(u => u.IdempotencyRecords).Returns(_idempotencyRecords.Object);
+            _unitOfWork.Setup(u => u.IntegrationOutbox).Returns(_integrationOutbox.Object);
 
             _currentUserService.SetupGet(c => c.UserId).Returns(_userId);
 
@@ -75,8 +78,8 @@ namespace App.Test.Handlers
             _createPaymentSessionHandler = new CreatePaymentSessionHandler(_unitOfWork.Object, _paymobService.Object, _currentUserService.Object, configuration, new Mock<ILogger<CreatePaymentSessionHandler>>().Object);
             _handlePaymobCallbackHandler = new HandlePaymobCallbackHandler(_unitOfWork.Object, _paymobService.Object, new Mock<ILogger<HandlePaymobCallbackHandler>>().Object);
             _getPaymentTransactionsHandler = new GetPaymentTransactionsHandler(_unitOfWork.Object, new Mock<ILogger<GetPaymentTransactionsHandler>>().Object);
-            _refundPaymentHandler = new RefundPaymentHandler(_unitOfWork.Object, _paymobService.Object, new Mock<ILogger<RefundPaymentHandler>>().Object);
-            _voidPaymentHandler = new VoidPaymentHandler(_unitOfWork.Object, _paymobService.Object, new Mock<ILogger<VoidPaymentHandler>>().Object);
+            _refundPaymentHandler = new RefundPaymentHandler(_unitOfWork.Object, _currentUserService.Object, _paymobService.Object, new Mock<ILogger<RefundPaymentHandler>>().Object);
+            _voidPaymentHandler = new VoidPaymentHandler(_unitOfWork.Object, _currentUserService.Object, _paymobService.Object, new Mock<ILogger<VoidPaymentHandler>>().Object);
         }
 
         private Order ValidPaymentOrder() => new()
@@ -545,6 +548,41 @@ namespace App.Test.Handlers
         }
 
         [Test]
+        public async Task EnsureRefundPaymentHandlerReplaysStoredResultWhenIdempotencyKeyWasProcessed()
+        {
+            var stored = new PaymentOperationResultDto
+            {
+                PaymobTransactionId = 123456,
+                Status = "Refunded",
+                RefundedAmount = 100m,
+                Message = "Refunded"
+            };
+            _idempotencyRecords.Setup(r => r.FindAsync(
+                    It.IsAny<Expression<Func<IdempotencyRecord, bool>>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new IdempotencyRecord
+                {
+                    UserId = _userId,
+                    Operation = "refund-payment",
+                    IdempotencyKey = "refund-key",
+                    ResponsePayload = JsonSerializer.Serialize(stored)
+                });
+
+            var result = await _refundPaymentHandler.Handle(
+                new RefundPaymentCommand { OrderId = Guid.NewGuid(), IdempotencyKey = "refund-key" },
+                It.IsAny<CancellationToken>());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.IsSuccess, Is.True);
+                Assert.That(result.Value.Status, Is.EqualTo("Refunded"));
+                Assert.That(result.Value.RefundedAmount, Is.EqualTo(100m));
+            });
+            _paymobService.Verify(p => p.RefundTransactionAsync(It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+            _orders.Verify(o => o.FindAsync(It.IsAny<Expression<Func<Order, bool>>>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Test]
         public void EnsureRefundPaymentHandlerThrowsNotFoundWhenOrderNotFound()
         {
             _orders.Setup(o => o.FindAsync(It.IsAny<Expression<Func<Order, bool>>>(), It.IsAny<CancellationToken>()))
@@ -607,6 +645,39 @@ namespace App.Test.Handlers
                 Assert.That(result.IsSuccess, Is.False);
                 Assert.That(result.Errors, Has.Some.EqualTo("No successful payment found for this order."));
             });
+        }
+
+        [Test]
+        public async Task EnsureVoidPaymentHandlerReplaysStoredResultWhenIdempotencyKeyWasProcessed()
+        {
+            var stored = new PaymentOperationResultDto
+            {
+                PaymobTransactionId = 123456,
+                Status = "Voided",
+                RefundedAmount = 0m,
+                Message = "Voided"
+            };
+            _idempotencyRecords.Setup(r => r.FindAsync(
+                    It.IsAny<Expression<Func<IdempotencyRecord, bool>>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new IdempotencyRecord
+                {
+                    UserId = _userId,
+                    Operation = "void-payment",
+                    IdempotencyKey = "void-key",
+                    ResponsePayload = JsonSerializer.Serialize(stored)
+                });
+
+            var result = await _voidPaymentHandler.Handle(
+                new VoidPaymentCommand { OrderId = Guid.NewGuid(), IdempotencyKey = "void-key" },
+                It.IsAny<CancellationToken>());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result.IsSuccess, Is.True);
+                Assert.That(result.Value.Status, Is.EqualTo("Voided"));
+            });
+            _paymobService.Verify(p => p.VoidTransactionAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Test]

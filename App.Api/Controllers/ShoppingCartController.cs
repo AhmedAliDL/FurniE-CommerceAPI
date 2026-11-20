@@ -15,6 +15,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/cart")]
+    [Route("api/v1/cart")]
     [Authorize]
     public class ShoppingCartController : BaseController
     {

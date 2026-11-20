@@ -1,4 +1,5 @@
 using App.Application.Common.Exceptions;
+using App.Application.Common.Idempotency;
 using App.Application.Common.Interfaces.Services;
 using App.Application.Common.Interfaces.UnitOfWork;
 using App.Application.Payments.Command.RefundPayment;
@@ -16,6 +17,19 @@ namespace App.Application.Orders.Command.ProcessReturnRefund
             logger.LogInformation("Return refund processing started. RequestId: {RequestId}", request.RequestId);
 
             Guid adminId = currentUserService.UserId ?? throw new NotFoundException("User not found.");
+
+            // A retried call returns the original outcome instead of failing the Received-state guard.
+            if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
+            {
+                var processed = await unitOfWork.IdempotencyRecords.FindAsync(
+                    r => r.UserId == adminId && r.Operation == IdempotencyOperations.ProcessReturnRefund && r.IdempotencyKey == request.IdempotencyKey,
+                    cancellationToken);
+                if (processed != null)
+                {
+                    logger.LogInformation("Duplicate return refund for idempotency key {IdempotencyKey}. Returning stored outcome.", request.IdempotencyKey);
+                    return ResponseResult.Success();
+                }
+            }
 
             var returnRequest = await unitOfWork.ReturnRequests.FindAsync(
                 r => r.Id == request.RequestId,
@@ -52,7 +66,13 @@ namespace App.Application.Orders.Command.ProcessReturnRefund
                 return ResponseResult.Failure($"Refund amount must be between 1 and {capCents} cents ({capExplanation}).");
             }
 
-            var refundResult = await sender.Send(new RefundPaymentCommand { OrderId = returnRequest.OrderId, AmountCents = refundCents }, cancellationToken);
+            // Deriving the inner key lets a retry replay the Paymob refund instead of issuing a second one.
+            var refundResult = await sender.Send(new RefundPaymentCommand
+            {
+                OrderId = returnRequest.OrderId,
+                AmountCents = refundCents,
+                IdempotencyKey = string.IsNullOrWhiteSpace(request.IdempotencyKey) ? null : $"{request.IdempotencyKey}-refund"
+            }, cancellationToken);
             if (!refundResult.IsSuccess)
                 return ResponseResult.Failure([.. refundResult.Errors]);
 
@@ -61,6 +81,17 @@ namespace App.Application.Orders.Command.ProcessReturnRefund
             returnRequest.ProcessedAt = DateTime.UtcNow;
             returnRequest.UpdatedAt = DateTime.UtcNow;
             unitOfWork.ReturnRequests.Update(returnRequest);
+
+            if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
+            {
+                await unitOfWork.IdempotencyRecords.AddAsync(new App.Domain.Entities.IdempotencyRecord
+                {
+                    UserId = adminId,
+                    Operation = IdempotencyOperations.ProcessReturnRefund,
+                    IdempotencyKey = request.IdempotencyKey,
+                    OrderId = returnRequest.OrderId
+                }, cancellationToken);
+            }
 
             await unitOfWork.CompleteAsync(cancellationToken);
 

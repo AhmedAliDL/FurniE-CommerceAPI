@@ -1,3 +1,4 @@
+using App.Application.Common.Exceptions;
 using App.Application.Common.Interfaces.Services;
 using App.Application.Common.Interfaces.UnitOfWork;
 using MediatR;
@@ -16,6 +17,18 @@ namespace App.Application.Products.Command.UpdateProduct
             {
                 logger.LogWarning("Product {ProductId} was not found.", request.ProductId);
                 return false;
+            }
+
+            if (request.Sku is not null)
+            {
+                string sku = request.Sku.Trim();
+                if (sku.Length > 0
+                    && await unitOfWork.Products.FindAsync(p => p.Sku == sku && p.ProductId != product.ProductId, cancellationToken) != null)
+                {
+                    throw new ConflictException($"A product with SKU '{sku}' already exists.");
+                }
+
+                product.Sku = sku;
             }
 
             product.ProductName = request.ProductName ?? product.ProductName;

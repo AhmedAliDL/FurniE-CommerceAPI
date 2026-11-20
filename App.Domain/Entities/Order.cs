@@ -3,10 +3,12 @@ using App.Domain.Interceptors;
 
 namespace App.Domain.Entities
 {
-    public class Order : ISoftDeletable
+    public class Order : ISoftDeletable, IAuditLog
     {
         public Guid OrderId { get; set; }
         public Guid UserId { get; set; }
+        public string? ErpOrderId { get; set; }
+        public string? ErpInvoiceId { get; set; }
         public decimal TotalPrice { get; set; }
         public OrderStatus OrderStatus { get; set; } = OrderStatus.Pending;
         public string ShippingAddress { get; set; } = string.Empty;

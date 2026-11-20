@@ -1,17 +1,24 @@
-﻿using App.Application.Common.Interfaces.Repos;
+﻿using System.Text.Json;
+using App.Application.Common.Interfaces.Repos;
+using App.Application.Common.Interfaces.Services;
 using App.Application.Common.Interfaces.UnitOfWork;
 using App.Domain.Entities;
+using App.Domain.Enums;
 using App.Infrastructure.Persistance;
 using App.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace App.Infrastructure.UnitOfWork
 {
     public class UnitOfWork : IUnitOfWork
     {
         private readonly AppDbContext _context;
-        public UnitOfWork(AppDbContext context)
+        private readonly ICurrentUserService _currentUserService;
+
+        public UnitOfWork(AppDbContext context, ICurrentUserService currentUserService)
         {
             _context = context;
+            _currentUserService = currentUserService;
             CartItems = new BaseRepository<CartItem>(_context);
             Coupons = new BaseRepository<Coupon>(_context);
             Categories = new BaseRepository<Category>(_context);
@@ -33,6 +40,7 @@ namespace App.Infrastructure.UnitOfWork
             SupportConversations = new BaseRepository<SupportConversation>(_context);
             SupportMessages = new BaseRepository<SupportMessage>(_context);
             IdempotencyRecords = new BaseRepository<IdempotencyRecord>(_context);
+            IntegrationOutbox = new BaseRepository<IntegrationOutboxMessage>(_context);
         }
         public IBaseRepository<Notification> Notifications { get; private set; }
         public IBaseRepository<AuditLog> AuditLogs { get; private set; }
@@ -41,6 +49,7 @@ namespace App.Infrastructure.UnitOfWork
         public IBaseRepository<SupportConversation> SupportConversations { get; private set; }
         public IBaseRepository<SupportMessage> SupportMessages { get; private set; }
         public IBaseRepository<IdempotencyRecord> IdempotencyRecords { get; private set; }
+        public IBaseRepository<IntegrationOutboxMessage> IntegrationOutbox { get; private set; }
 
         public IBaseRepository<CartItem> CartItems { get; private set; }
 
@@ -71,7 +80,69 @@ namespace App.Infrastructure.UnitOfWork
 
         public async Task<int> CompleteAsync(CancellationToken cancellationToken = default)
         {
+            AppendOrderStatusChanges();
             return await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        // Every order status transition is captured here, so handlers and background jobs
+        // cannot forget to record history or emit the ERP event.
+        private void AppendOrderStatusChanges()
+        {
+            var changedAt = DateTime.UtcNow;
+            Guid? userId = _currentUserService.UserId;
+
+            foreach (var entry in _context.ChangeTracker.Entries<Order>())
+            {
+                string fromStatus;
+                string toStatus;
+
+                if (entry.State == EntityState.Added)
+                {
+                    fromStatus = string.Empty;
+                    toStatus = ((OrderStatus)entry.CurrentValues[nameof(Order.OrderStatus)]!).ToString();
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    object? original = entry.OriginalValues[nameof(Order.OrderStatus)];
+                    object? current = entry.CurrentValues[nameof(Order.OrderStatus)];
+                    if (Equals(original, current))
+                        continue;
+
+                    fromStatus = ((OrderStatus)original!).ToString();
+                    toStatus = ((OrderStatus)current!).ToString();
+                }
+                else
+                {
+                    continue;
+                }
+
+                Guid orderId = (Guid)entry.CurrentValues[nameof(Order.OrderId)]!;
+                _context.Set<OrderStatusHistory>().Add(new OrderStatusHistory
+                {
+                    OrderId = orderId,
+                    FromStatus = fromStatus,
+                    ToStatus = toStatus,
+                    ChangedByUserId = userId,
+                    ChangedAt = changedAt
+                });
+
+                // Creation is announced by the OrderPlaced event; only real transitions emit OrderStatusChanged.
+                if (entry.State == EntityState.Modified)
+                {
+                    _context.Set<IntegrationOutboxMessage>().Add(new IntegrationOutboxMessage
+                    {
+                        EventType = "OrderStatusChanged",
+                        Payload = JsonSerializer.Serialize(new
+                        {
+                            orderId,
+                            from = fromStatus,
+                            to = toStatus,
+                            changedAt
+                        }),
+                        OccurredAt = changedAt
+                    });
+                }
+            }
         }
 
         public void Dispose()

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using App.Application.Common.Exceptions;
+using App.Application.Common.Idempotency;
 using App.Application.Common.Interfaces.Services;
 using App.Application.Common.Interfaces.UnitOfWork;
 using App.Application.Payments.Dto;
@@ -38,8 +39,9 @@ namespace App.Application.Payments.Command.CreatePaymentSession
             IdempotencyRecord? idempotencyRecord = null;
             if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
             {
+                // Rows written before the Operation column existed carry an empty value.
                 idempotencyRecord = await unitOfWork.IdempotencyRecords.FindAsync(
-                    r => r.UserId == userId && r.IdempotencyKey == request.IdempotencyKey, cancellationToken);
+                    r => r.UserId == userId && (r.Operation == IdempotencyOperations.CreatePaymentSession || r.Operation == string.Empty) && r.IdempotencyKey == request.IdempotencyKey, cancellationToken);
                 if (idempotencyRecord != null)
                 {
                     if (idempotencyRecord.OrderId != order.OrderId)
@@ -108,6 +110,7 @@ namespace App.Application.Payments.Command.CreatePaymentSession
                 var payload = JsonSerializer.Serialize(session);
                 if (idempotencyRecord != null)
                 {
+                    idempotencyRecord.Operation = IdempotencyOperations.CreatePaymentSession;
                     idempotencyRecord.ResponsePayload = payload;
                     idempotencyRecord.UpdatedAt = DateTime.UtcNow;
                     unitOfWork.IdempotencyRecords.Update(idempotencyRecord);
@@ -117,6 +120,7 @@ namespace App.Application.Payments.Command.CreatePaymentSession
                     await unitOfWork.IdempotencyRecords.AddAsync(new IdempotencyRecord
                     {
                         UserId = userId,
+                        Operation = IdempotencyOperations.CreatePaymentSession,
                         IdempotencyKey = request.IdempotencyKey,
                         OrderId = order.OrderId,
                         ResponsePayload = payload
@@ -132,7 +136,7 @@ namespace App.Application.Payments.Command.CreatePaymentSession
             {
                 // A concurrent request with the same key won the unique-index race; replay its stored session.
                 var winner = await unitOfWork.IdempotencyRecords.FindAsync(
-                    r => r.UserId == userId && r.IdempotencyKey == request.IdempotencyKey, cancellationToken);
+                    r => r.UserId == userId && (r.Operation == IdempotencyOperations.CreatePaymentSession || r.Operation == string.Empty) && r.IdempotencyKey == request.IdempotencyKey, cancellationToken);
                 if (winner != null
                     && !string.IsNullOrWhiteSpace(winner.ResponsePayload)
                     && JsonSerializer.Deserialize<PaymentSessionDto>(winner.ResponsePayload) is { } concurrentReplay)

@@ -1,6 +1,7 @@
 using App.Application.Categories.Queries.GetAllCategories;
 using App.Application.Products.Command.CreateProduct;
 using App.Application.Products.Command.DeleteProduct;
+using App.Application.Products.Command.SetProductStock;
 using App.Application.Products.Command.UpdateProduct;
 using App.Application.Products.Dto;
 using App.Application.Products.Queries.GetActiveProducts;
@@ -22,6 +23,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/products")]
+    [Route("api/v1/products")]
     [Authorize]
     public class ProductController : BaseController
     {
@@ -185,6 +187,30 @@ namespace App.Api.Controllers
         [Authorize(Roles = "Admin")]
         [HttpPut("{productId:guid}")]
         public async Task<IActionResult> Update(Guid productId, [FromBody] UpdateProductCommand command, CancellationToken cancellationToken = default)
+        {
+            if (productId != command.ProductId)
+                return BadRequest("The route product id must match the request product id.");
+
+            var result = await _sender.Send(command, cancellationToken);
+            return result ? NoContent() : NotFound();
+        }
+
+        /// <summary>
+        /// Sets a product's stock level and mirrors it into IsActive (zero stock deactivates). Admins and the ERP may call it.
+        /// </summary>
+        /// <param name="productId">The product identifier.</param>
+        /// <param name="command">The absolute stock quantity to set.</param>
+        /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+        /// <returns>No content when updated, or not found when the product does not exist.</returns>
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [Authorize(Policy = "IntegrationOrAdmin")]
+        [HttpPut("{productId:guid}/stock")]
+        public async Task<IActionResult> SetStock(Guid productId, [FromBody] SetProductStockCommand command, CancellationToken cancellationToken = default)
         {
             if (productId != command.ProductId)
                 return BadRequest("The route product id must match the request product id.");

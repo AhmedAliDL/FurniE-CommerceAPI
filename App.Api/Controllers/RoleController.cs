@@ -15,6 +15,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/roles")]
+    [Route("api/v1/roles")]
     [Authorize(Roles = "Admin")]
     public class RoleController : BaseController
     {

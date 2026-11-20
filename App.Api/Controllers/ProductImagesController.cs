@@ -16,6 +16,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/products/{productId:guid}/images")]
+    [Route("api/v1/products/{productId:guid}/images")]
     public class ProductImagesController : BaseController
     {
         /// <summary>

@@ -17,6 +17,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/coupons")]
+    [Route("api/v1/coupons")]
     [Authorize]
     public class CouponController : BaseController
     {

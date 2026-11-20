@@ -13,6 +13,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/contact")]
+    [Route("api/v1/contact")]
     [Authorize]
     public class ContactController : BaseController
     {

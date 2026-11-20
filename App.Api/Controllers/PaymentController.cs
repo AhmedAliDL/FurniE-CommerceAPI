@@ -17,6 +17,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/payments")]
+    [Route("api/v1/payments")]
     [Authorize]
     public class PaymentController : BaseController
     {
@@ -31,6 +32,7 @@ namespace App.Api.Controllers
         /// Creates a Paymob payment session for one of the current user's orders.
         /// </summary>
         /// <param name="command">The order to pay for, plus an optional idempotency key: repeating the same key for the same order within the intention's lifetime replays the existing session instead of creating a new Paymob intention.</param>
+        /// <param name="idempotencyKey">Optional idempotency key sent as the Idempotency-Key header; overrides the body value.</param>
         /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
         /// <returns>The client secret, checkout URL and available payment methods.</returns>
         [ProducesResponseType(typeof(ResponseResult<PaymentSessionDto>), StatusCodes.Status200OK)]
@@ -39,8 +41,11 @@ namespace App.Api.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [HttpPost("session")]
-        public async Task<IActionResult> CreateSession([FromBody] CreatePaymentSessionCommand command, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> CreateSession([FromBody] CreatePaymentSessionCommand command, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null, CancellationToken cancellationToken = default)
         {
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+                command.IdempotencyKey = idempotencyKey;
+
             var result = await _sender.Send(command, cancellationToken);
             return Ok(result);
         }
@@ -103,6 +108,7 @@ namespace App.Api.Controllers
         /// allowed within 14 days after delivery.
         /// </summary>
         /// <param name="command">The order to refund. Omit AmountCents to refund everything still refundable.</param>
+        /// <param name="idempotencyKey">Optional idempotency key sent as the Idempotency-Key header; repeating it returns the original result instead of refunding again.</param>
         /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
         /// <returns>The updated transaction status and refunded amount.</returns>
         [ProducesResponseType(typeof(ResponseResult<PaymentOperationResultDto>), StatusCodes.Status200OK)]
@@ -112,8 +118,11 @@ namespace App.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [Authorize(Roles = "Admin")]
         [HttpPost("refund")]
-        public async Task<IActionResult> Refund([FromBody] RefundPaymentCommand command, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> Refund([FromBody] RefundPaymentCommand command, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null, CancellationToken cancellationToken = default)
         {
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+                command.IdempotencyKey = idempotencyKey;
+
             var result = await _sender.Send(command, cancellationToken);
             return Ok(result);
         }
@@ -122,6 +131,7 @@ namespace App.Api.Controllers
         /// Voids the payment of an order. Voids are only allowed within 24 hours of payment.
         /// </summary>
         /// <param name="command">The order whose payment should be voided.</param>
+        /// <param name="idempotencyKey">Optional idempotency key sent as the Idempotency-Key header; repeating it returns the original result instead of voiding again.</param>
         /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
         /// <returns>The updated transaction status.</returns>
         [ProducesResponseType(typeof(ResponseResult<PaymentOperationResultDto>), StatusCodes.Status200OK)]
@@ -131,8 +141,11 @@ namespace App.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [Authorize(Roles = "Admin")]
         [HttpPost("void")]
-        public async Task<IActionResult> Void([FromBody] VoidPaymentCommand command, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> Void([FromBody] VoidPaymentCommand command, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey = null, CancellationToken cancellationToken = default)
         {
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+                command.IdempotencyKey = idempotencyKey;
+
             var result = await _sender.Send(command, cancellationToken);
             return Ok(result);
         }

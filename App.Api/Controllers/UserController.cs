@@ -13,6 +13,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/users")]
+    [Route("api/v1/users")]
     [Authorize(Roles = "Admin")]
     public class UserController : BaseController
     {

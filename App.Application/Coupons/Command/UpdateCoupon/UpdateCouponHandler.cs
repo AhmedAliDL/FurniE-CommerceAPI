@@ -16,7 +16,7 @@ namespace App.Application.Coupons.Command.UpdateCoupon
 
             coupon.CouponCode = request.CouponCode ?? coupon.CouponCode;
             coupon.CouponRatio = request.CouponRatio ?? coupon.CouponRatio;
-            coupon.ExpireDate = DateTime.Now
+            coupon.ExpireDate = DateTime.UtcNow
                 .AddDays(request.PeriodInDays ?? 0)
                 .AddHours(request.PeriodInHours ?? 0)
                 .AddMinutes(request.PeriodInMinutes ?? 0);

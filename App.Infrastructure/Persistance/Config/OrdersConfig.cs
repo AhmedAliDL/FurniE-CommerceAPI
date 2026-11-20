@@ -19,6 +19,8 @@ namespace App.Infrastructure.Persistance.Config
             builder.Property(o => o.RecipientPhone).HasColumnType("nvarchar(32)");
             builder.Property(o => o.ShippingCity).HasColumnType("nvarchar(80)");
             builder.Property(o => o.ShippingCountry).HasColumnType("nvarchar(80)");
+            builder.Property(o => o.ErpOrderId).HasColumnType("nvarchar(100)");
+            builder.Property(o => o.ErpInvoiceId).HasColumnType("nvarchar(100)");
 
 
             builder.HasOne(o => o.Customer)

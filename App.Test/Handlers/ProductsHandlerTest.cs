@@ -5,6 +5,7 @@ using App.Application.Common.Interfaces.Services;
 using App.Application.Common.Interfaces.UnitOfWork;
 using App.Application.Products.Command.CreateProduct;
 using App.Application.Products.Command.DeleteProduct;
+using App.Application.Products.Command.SetProductStock;
 using App.Application.Products.Command.UpdateProduct;
 using App.Application.Products.Queries.GetAllProducts;
 using App.Application.Products.Queries.GetActiveProducts;
@@ -44,6 +45,7 @@ namespace App.Test.Handlers
         private CreateProductHandler _createHandler = null!;
         private UpdateProductHandler _updateHandler = null!;
         private DeleteProductHandler _deleteHandler = null!;
+        private SetProductStockHandler _setStockHandler = null!;
 
         [SetUp]
         public void Setup()
@@ -72,6 +74,7 @@ namespace App.Test.Handlers
             _createHandler = new CreateProductHandler(_unitOfWork.Object, new Mock<ILogger<CreateProductHandler>>().Object);
             _updateHandler = new UpdateProductHandler(_unitOfWork.Object, _priceDropDetection.Object, new Mock<ILogger<UpdateProductHandler>>().Object);
             _deleteHandler = new DeleteProductHandler(_unitOfWork.Object, new Mock<ILogger<DeleteProductHandler>>().Object);
+            _setStockHandler = new SetProductStockHandler(_unitOfWork.Object, new Mock<ILogger<SetProductStockHandler>>().Object);
         }
 
         private static Product ValidProduct()
@@ -337,6 +340,123 @@ namespace App.Test.Handlers
             Assert.That(result, Is.TypeOf<Guid>());
             _products.Verify(r => r.AddAsync(It.Is<Product>(p => p.ProductName == "Wooden Chair" && p.Price == 150m), It.IsAny<CancellationToken>()), Times.Once);
             _unitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Test]
+        public async Task EnsureCreateProductHandlerThrowsConflictWhenSkuAlreadyExists()
+        {
+            _products.Setup(r => r.FindAsync(
+                    It.IsAny<Expression<Func<Product, bool>>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ValidProduct());
+
+            Assert.ThrowsAsync<ConflictException>(async () => await _createHandler.Handle(
+                new CreateProductCommand
+                {
+                    Sku = " CH-001 ",
+                    ProductName = "Wooden Chair",
+                    Price = 150m,
+                    StockQuantity = 10,
+                    CategoryId = Guid.NewGuid()
+                },
+                It.IsAny<CancellationToken>()));
+
+            _products.Verify(r => r.AddAsync(It.IsAny<Product>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Test]
+        public async Task EnsureCreateProductHandlerStoresTrimmedSku()
+        {
+            _products.Setup(r => r.FindAsync(
+                    It.IsAny<Expression<Func<Product, bool>>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync((Product?)null);
+            _products.Setup(r => r.AddAsync(It.IsAny<Product>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+            _unitOfWork.Setup(u => u.CompleteAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(1);
+
+            await _createHandler.Handle(
+                new CreateProductCommand
+                {
+                    Sku = "  CH-002  ",
+                    ProductName = "Wooden Chair",
+                    Price = 150m,
+                    StockQuantity = 10,
+                    CategoryId = Guid.NewGuid()
+                },
+                It.IsAny<CancellationToken>());
+
+            _products.Verify(r => r.AddAsync(It.Is<Product>(p => p.Sku == "CH-002"), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Test]
+        public void EnsureUpdateProductHandlerThrowsConflictWhenSkuBelongsToAnotherProduct()
+        {
+            _products.Setup(r => r.GetByIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(ValidProduct());
+            _products.Setup(r => r.FindAsync(
+                    It.IsAny<Expression<Func<Product, bool>>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ValidProduct());
+
+            Assert.ThrowsAsync<ConflictException>(() => _updateHandler.Handle(
+                new UpdateProductCommand { ProductId = Guid.NewGuid(), Sku = "CH-001" },
+                It.IsAny<CancellationToken>()));
+        }
+
+        [Test]
+        public async Task EnsureSetProductStockHandlerDeactivatesProductWhenStockReachesZero()
+        {
+            var product = ValidProduct();
+            _products.Setup(r => r.GetByIdAsync(product.ProductId)).ReturnsAsync(product);
+            _unitOfWork.Setup(u => u.CompleteAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+            var result = await _setStockHandler.Handle(
+                new SetProductStockCommand { ProductId = product.ProductId, Quantity = 0 },
+                It.IsAny<CancellationToken>());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(product.StockQuantity, Is.EqualTo(0));
+                Assert.That(product.IsActive, Is.False);
+            });
+            _products.Verify(r => r.Update(product), Times.Once);
+        }
+
+        [Test]
+        public async Task EnsureSetProductStockHandlerReactivatesProductWhenStockIsPositive()
+        {
+            var product = ValidProduct();
+            product.IsActive = false;
+            _products.Setup(r => r.GetByIdAsync(product.ProductId)).ReturnsAsync(product);
+            _unitOfWork.Setup(u => u.CompleteAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+            var result = await _setStockHandler.Handle(
+                new SetProductStockCommand { ProductId = product.ProductId, Quantity = 7 },
+                It.IsAny<CancellationToken>());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(result, Is.True);
+                Assert.That(product.StockQuantity, Is.EqualTo(7));
+                Assert.That(product.IsActive, Is.True);
+            });
+        }
+
+        [Test]
+        public async Task EnsureSetProductStockHandlerReturnsFalseWhenProductMissing()
+        {
+            _products.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Product?)null);
+
+            var result = await _setStockHandler.Handle(
+                new SetProductStockCommand { ProductId = Guid.NewGuid(), Quantity = 5 },
+                It.IsAny<CancellationToken>());
+
+            Assert.That(result, Is.False);
+            _products.Verify(r => r.Update(It.IsAny<Product>()), Times.Never);
+            _unitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Test]

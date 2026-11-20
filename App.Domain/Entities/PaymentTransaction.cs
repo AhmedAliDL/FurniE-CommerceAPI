@@ -2,7 +2,7 @@ using App.Domain.Interceptors;
 
 namespace App.Domain.Entities
 {
-    public class PaymentTransaction : ISoftDeletable
+    public class PaymentTransaction : ISoftDeletable, IAuditLog
     {
         public Guid Id { get; set; }
         public long PaymobTransactionId { get; set; }

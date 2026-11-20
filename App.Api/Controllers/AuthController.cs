@@ -25,6 +25,7 @@ namespace App.Api.Controllers
     /// Handles authentication endpoints: registration, login, email and phone verification, password management, and token refresh and revocation.
     /// </summary>
     [ApiController]
+    [Route("api/v1/auth")]
     public class AuthController : BaseController
     {
         /// <summary>

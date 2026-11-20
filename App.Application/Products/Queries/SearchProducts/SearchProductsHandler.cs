@@ -66,6 +66,7 @@ namespace App.Application.Products.Queries.SearchProducts
         private static ProductListItemDto ToDto(Product p) => new()
         {
             ProductId = p.ProductId,
+            Sku = p.Sku,
             ProductName = p.ProductName,
             Description = p.Description,
             Price = p.Price,

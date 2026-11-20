@@ -20,6 +20,7 @@ artifacts/
 [Rr]elease/
 x64/
 x86/
+db
 
 # NuGet
 *.nupkg

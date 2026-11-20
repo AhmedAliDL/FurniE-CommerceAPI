@@ -6,6 +6,9 @@ namespace App.Application.Products.Command.CreateProduct
     {
         public CreateProductValidator()
         {
+            RuleFor(p => p.Sku)
+                .MaximumLength(64)
+                .WithMessage("SKU must not exceed 64 characters.");
             RuleFor(p => p.ProductName)
                 .NotEmpty()
                 .MaximumLength(50)

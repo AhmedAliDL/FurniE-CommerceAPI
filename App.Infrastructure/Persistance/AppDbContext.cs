@@ -33,6 +33,8 @@ namespace App.Infrastructure.Persistance
         public DbSet<SupportMessage> SupportMessages { get; set; }
         public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<IntegrationOutboxMessage> IntegrationOutbox { get; set; }
+        public DbSet<OrderStatusHistory> OrderStatusHistory { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

@@ -26,6 +26,7 @@ namespace App.Application.Common.Interfaces.UnitOfWork
         IBaseRepository<SupportConversation> SupportConversations { get; }
         IBaseRepository<SupportMessage> SupportMessages { get; }
         IBaseRepository<IdempotencyRecord> IdempotencyRecords { get; }
+        IBaseRepository<IntegrationOutboxMessage> IntegrationOutbox { get; }
         Task<int> CompleteAsync(CancellationToken cancellationToken = default);
     }
 

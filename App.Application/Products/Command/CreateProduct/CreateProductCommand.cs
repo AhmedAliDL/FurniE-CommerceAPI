@@ -4,6 +4,7 @@ namespace App.Application.Products.Command.CreateProduct
 {
     public record CreateProductCommand : IRequest<Guid>
     {
+        public string Sku { get; set; } = string.Empty;
         public string ProductName { get; set; } = null!;
         public string Description { get; set; } = null!;
         public decimal Price { get; set; }

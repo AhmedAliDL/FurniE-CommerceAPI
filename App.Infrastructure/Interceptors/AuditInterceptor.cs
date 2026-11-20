@@ -24,6 +24,11 @@ namespace App.Infrastructure.Interceptors
 
             foreach (var entry in entries)
             {
+                // Entities key on different property names (ProductId, OrderId, ...); resolve by metadata.
+                var keyProperty = entry.Metadata.FindPrimaryKey()?.Properties.FirstOrDefault(p => p.ClrType == typeof(Guid));
+                if (keyProperty is null || entry.CurrentValues[keyProperty] is not Guid entityId)
+                    continue;
+
                 var oldValues = entry.OriginalValues.Properties.ToDictionary(p => p.Name, p => entry.OriginalValues[p]);
                 var newValues = entry.CurrentValues.Properties.ToDictionary(p => p.Name, p => entry.CurrentValues[p]);
                 AuditLog audit = new()
@@ -31,7 +36,7 @@ namespace App.Infrastructure.Interceptors
                     UserId = currentUserService.UserId,
                     Action = entry.State.ToString(),
                     EntityName = entry.Entity.ToString()!,
-                    EntityId = Guid.Parse(entry.Property("Id").CurrentValue!.ToString()!),
+                    EntityId = entityId,
                     OldValues = JsonSerializer.Serialize(oldValues),
                     NewValues = JsonSerializer.Serialize(newValues)
                 };

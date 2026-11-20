@@ -3,9 +3,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace App.Domain.Entities
 {
-    public class Product : ISoftDeletable
+    public class Product : ISoftDeletable, IAuditLog
     {
         public Guid ProductId { get; set; }
+        public string Sku { get; set; } = string.Empty;
         public string ProductName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public decimal Price { get; set; }

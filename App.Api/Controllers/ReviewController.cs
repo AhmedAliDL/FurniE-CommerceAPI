@@ -15,6 +15,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/reviews")]
+    [Route("api/v1/reviews")]
     [Authorize]
     public class ReviewController : BaseController
     {

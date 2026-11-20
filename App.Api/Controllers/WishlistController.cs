@@ -14,6 +14,7 @@ namespace App.Api.Controllers
     /// </summary>
     [ApiController]
     [Route("api/wishlist")]
+    [Route("api/v1/wishlist")]
     [Authorize]
     public class WishlistController : BaseController
     {

@@ -11,6 +11,7 @@ namespace App.Infrastructure.Persistance.Config
             builder.HasKey(oi => oi.OrderItemId);
             builder.Property(oi => oi.OrderItemId).ValueGeneratedOnAdd();
 
+            builder.Property(oi => oi.ProductSkuSnapshot).HasColumnType("nvarchar(64)");
             builder.Property(oi => oi.ProductNameSnapshot).HasColumnType("nvarchar(50)");
             builder.Property(oi => oi.UnitPrice).HasColumnType("decimal(18,2)");
             builder.Property(oi => oi.Quantity).HasColumnType("int");

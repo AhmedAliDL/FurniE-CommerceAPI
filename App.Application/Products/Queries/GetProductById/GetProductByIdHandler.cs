@@ -19,6 +19,7 @@ namespace App.Application.Products.Queries.GetProductById
             return new ProductResponse
             {
                 ProductId = product.ProductId,
+                Sku = product.Sku,
                 ProductName = product.ProductName,
                 Description = product.Description,
                 Price = product.Price,
